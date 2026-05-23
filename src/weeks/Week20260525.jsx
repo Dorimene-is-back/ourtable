@@ -53,5 +53,4 @@ const meals = [
       "900g salmon fillets or catfish, thick pieces (double batch)",
       "480g jasmine rice — cook half tonight, half Wed",
       "5 tbsp fish sauce",
-      "4 tbsp sugar (for caramel — authentic)",
-      "5 garlic cloves,
+      "4 tbsp sugar (for caram
