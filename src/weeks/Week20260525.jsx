@@ -6,6 +6,7 @@ const meals = [
     day: "Monday", date: "25 May", emoji: "🇻🇳",
     title: "Pho Gà",
     subtitle: "Vietnamese chicken noodle soup · DIY toppings at the table",
+    image: "https://vickypham.com/wp-content/uploads/2024/08/77225-2024_05_05eosm509072.jpg",
     kids: "~70g noodles + ~80g chicken each, mild broth. Spring onions on side.",
     adult: "Full bowl + coriander, chilli, lime, hoisin 🌶️",
     adultRef: "Adapted from Vicky Pham",
@@ -44,6 +45,7 @@ const meals = [
     day: "Tuesday", date: "26 May", emoji: "🇻🇳",
     title: "Cá Kho Tộ",
     subtitle: "Vietnamese caramelised fish · steamed rice · greens · make double for Wednesday!",
+    image: "https://theravenouscouple.com/wp-content/uploads/2009/08/ca-kho-to.jpg",
     kids: "~80g fish each, ~160g cooked rice each. Glaze on the side.",
     adult: "Full portion + sliced chilli & fresh coriander 🌶️",
     adultRef: "Adapted from The Ravenous Couple",
@@ -90,6 +92,7 @@ const meals = [
     day: "Thursday", date: "28 May", emoji: "🇱🇧",
     title: "Fattoush & Grilled Chicken",
     subtitle: "Lebanese fattoush salad for adult · pasta al burro for kids",
+    image: "https://maureenabood.com/wp-content/uploads/2012/04/Fattoush-big-bowl-on-table-POST.jpg",
     kids: "~160g cooked pasta, butter & Parmesan 🧀",
     kidsRef: null,
     adult: "Fattoush with crispy pita, grilled chicken, sumac dressing.",
@@ -137,6 +140,7 @@ const meals = [
     day: "Friday", date: "29 May", emoji: "🇫🇷",
     title: "Salade Chèvre Chaud",
     subtitle: "Warm goat's cheese on toast · walnuts · balsamic",
+    image: "https://img.sndimg.com/food/image/upload/f_auto,c_thumb,q_55,w_860,ar_3:2/v1/img/recipes/48/33/18/picpXBluN.jpg",
     kids: "Pasta al Pistacchio + plenty of Parmesan 🧀",
     kidsRef: "Adapted from Giallo Zafferano",
     kidsRefUrl: "https://www.giallozafferano.com/recipes/Fusilli-pasta-with-pistachio-pesto-and-cherry-tomatoes.html",
@@ -296,6 +300,17 @@ export default function MealPlan() {
                 </div>
               ) : (
                 <>
+                  {/* Hero image */}
+                  {meal.image && (
+                    <div style={{ width: "100%", height: 200, overflow: "hidden" }}>
+                      <img
+                        src={meal.image}
+                        alt={meal.title}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        onError={(e) => { e.target.style.display = "none"; }}
+                      />
+                    </div>
+                  )}
                   <div style={{ background: CREAM, borderBottom: `1px solid ${BORDER}`, padding: "18px 20px 16px" }}>
                     <p style={{ margin: "0 0 4px", fontSize: 13, fontFamily: "sans-serif", color: ACCENT, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase" }}>{meal.day} · {meal.date}</p>
                     <p style={{ margin: "0 0 4px", fontSize: 26, color: DARK, lineHeight: 1.15 }}>{meal.emoji} {meal.title}</p>
