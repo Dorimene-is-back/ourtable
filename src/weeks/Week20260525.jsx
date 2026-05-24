@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import MealCard from "../components/MealCard";
 import ShoppingList from "../components/ShoppingList";
+import DaySummary from "../components/DaySummary";
 
 const ACCENT = "#C4956A";
 const DARK = "#2A2A2A";
@@ -39,7 +40,11 @@ export default function Week20260525() {
       if (week) {
         week.days.sort((a, b) => a.id - b.id);
         week.days.forEach(day => {
-          day.recipes.sort((a, b) => a.type === "dessert" ? 1 : -1);
+          day.recipes.sort((a, b) => {
+            if (a.type === "dessert") return 1;
+            if (b.type === "dessert") return -1;
+            return 0;
+          });
           day.recipes.forEach(recipe => {
             recipe.ingredients.sort((a, b) => a.sort_order - b.sort_order);
             recipe.steps.sort((a, b) => a.sort_order - b.sort_order);
@@ -101,14 +106,23 @@ export default function Week20260525() {
       {tab === "plan" && (
         <div style={{ padding: "16px 14px 0" }}>
           {data.days.map((day) => (
-            <div key={day.id}>
+            <div key={day.id} style={{ marginBottom: 8 }}>
               {/* Day header */}
               <div style={{ padding: "20px 4px 10px" }}>
                 <p style={{ margin: 0, fontSize: 13, fontFamily: "sans-serif", fontWeight: 700, color: ACCENT, letterSpacing: 1.5, textTransform: "uppercase" }}>
                   {day.day} · {day.date}
-                  {day.holiday && <span style={{ marginLeft: 8, background: ACCENT, color: "white", borderRadius: 10, padding: "2px 8px", fontSize: 11 }}>{day.holiday_name}</span>}
+                  {day.holiday && (
+                    <span style={{ marginLeft: 8, background: ACCENT, color: "white", borderRadius: 10, padding: "2px 8px", fontSize: 11 }}>
+                      {day.holiday_name}
+                    </span>
+                  )}
                 </p>
               </div>
+
+              {/* Day summary */}
+              <DaySummary day={day} />
+
+              {/* Recipe cards */}
               {day.recipes.map((recipe) => (
                 <MealCard key={recipe.id} recipe={recipe} />
               ))}
