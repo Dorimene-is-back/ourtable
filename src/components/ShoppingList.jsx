@@ -4,11 +4,15 @@ const BORDER = "#EEE8DE";
 const CREAM = "#FDF6EC";
 
 export default function ShoppingList({ shopping }) {
+  // Group by day, preserving day_order
   const grouped = shopping.reduce((acc, item) => {
-    if (!acc[item.day]) acc[item.day] = [];
-    acc[item.day].push(item);
+    if (!acc[item.day]) acc[item.day] = { order: item.day_order || 0, items: [] };
+    acc[item.day].items.push(item);
     return acc;
   }, {});
+
+  // Sort days by day_order
+  const sortedDays = Object.entries(grouped).sort((a, b) => a[1].order - b[1].order);
 
   return (
     <div style={{ padding: "16px 14px 0" }}>
@@ -18,7 +22,7 @@ export default function ShoppingList({ shopping }) {
           Olive oil · Fish sauce · Garlic · Sugar · Soy sauce · Sesame oil · Rice vinegar · Balsamic vinegar · Dijon mustard · Neutral oil · Salt & pepper
         </p>
       </div>
-      {Object.entries(grouped).map(([day, items]) => (
+      {sortedDays.map(([day, { items }]) => (
         <div key={day} style={{ background: "white", borderRadius: 12, padding: "16px 18px", marginBottom: 12, border: `1px solid ${BORDER}` }}>
           <p style={{ margin: "0 0 10px", fontSize: 13, fontFamily: "sans-serif", fontWeight: 700, color: DARK, letterSpacing: 0.5, textTransform: "uppercase" }}>{day}</p>
           {items.sort((a, b) => a.sort_order - b.sort_order).map((item, j) => (
