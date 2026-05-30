@@ -8,17 +8,40 @@ function whoLabel(servings) {
   const all = servings.find(s => s.for_who === "all");
   if (all) return "Everyone";
   const parts = [];
-  const adult = servings.find(s => s.for_who === "adult");
   const kids = servings.find(s => s.for_who === "kids");
-  if (adult) parts.push("Adult");
+  const adult = servings.find(s => s.for_who === "adult");
   if (kids) parts.push(`Kids ×${kids.count}`);
+  if (adult) parts.push("Adult");
   return parts.join(" + ");
 }
 
 export default function DaySummary({ day }) {
+  const visibleRecipes = day.recipes.filter(r => r.id !== 'vesak-day-no-cooking' && !r.id.includes('no-cooking') && r.image !== '' || r.comments);
+  
   const comments = day.recipes
     .map(r => r.comments)
     .filter(c => c && c.trim() !== "");
+
+  // For holiday days with no-cooking recipe, just show comment
+  const isHolidayNoFood = day.holiday && day.recipes.length === 1 && day.recipes[0].ingredients?.length === 0;
+
+  if (isHolidayNoFood) {
+    return (
+      <div style={{
+        background: CREAM,
+        border: `1px solid ${BORDER}`,
+        borderRadius: 12,
+        padding: "14px 16px",
+        marginBottom: 12,
+      }}>
+        {comments.map((comment, i) => (
+          <p key={i} style={{ margin: 0, fontSize: 13, fontFamily: "sans-serif", color: "#777", lineHeight: 1.6 }}>
+            💡 {comment}
+          </p>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -28,7 +51,6 @@ export default function DaySummary({ day }) {
       padding: "14px 16px",
       marginBottom: 12,
     }}>
-      {/* Recipe list */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: comments.length > 0 ? 12 : 0 }}>
         {day.recipes.map((recipe) => (
           <div key={recipe.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -48,7 +70,6 @@ export default function DaySummary({ day }) {
         ))}
       </div>
 
-      {/* Comments */}
       {comments.length > 0 && (
         <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
           {comments.map((comment, i) => (
