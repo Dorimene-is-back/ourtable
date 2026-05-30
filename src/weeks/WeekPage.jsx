@@ -11,6 +11,17 @@ const BORDER = "#EEE8DE";
 const BG = "#FAFAF7";
 const CREAM = "#FDF6EC";
 
+function sortRecipes(recipes) {
+  return [...recipes].sort((a, b) => {
+    const order = { kids: 0, adult: 1, all: 2, dessert: 3 };
+    if (a.type === "dessert") return 1;
+    if (b.type === "dessert") return -1;
+    const aFor = a.servings?.[0]?.for_who || "all";
+    const bFor = b.servings?.[0]?.for_who || "all";
+    return (order[aFor] ?? 2) - (order[bFor] ?? 2);
+  });
+}
+
 export default function WeekPage() {
   const { weekId } = useParams();
   const [data, setData] = useState(null);
@@ -41,11 +52,7 @@ export default function WeekPage() {
       if (week) {
         week.days.sort((a, b) => a.id - b.id);
         week.days.forEach(day => {
-          day.recipes.sort((a, b) => {
-            if (a.type === "dessert") return 1;
-            if (b.type === "dessert") return -1;
-            return 0;
-          });
+          day.recipes = sortRecipes(day.recipes);
           day.recipes.forEach(recipe => {
             recipe.ingredients.sort((a, b) => a.sort_order - b.sort_order);
             recipe.steps.sort((a, b) => a.sort_order - b.sort_order);
@@ -103,24 +110,27 @@ export default function WeekPage() {
 
       {tab === "plan" && (
         <div style={{ padding: "16px 14px 0" }}>
-          {data.days.map((day) => (
-            <div key={day.id} style={{ marginBottom: 8 }}>
-              <div style={{ padding: "20px 4px 10px" }}>
-                <p style={{ margin: 0, fontSize: 13, fontFamily: "sans-serif", fontWeight: 700, color: ACCENT, letterSpacing: 1.5, textTransform: "uppercase" }}>
-                  {day.day} · {day.date}
-                  {day.holiday && (
-                    <span style={{ marginLeft: 8, background: ACCENT, color: "white", borderRadius: 10, padding: "2px 8px", fontSize: 11 }}>
-                      {day.holiday_name}
-                    </span>
-                  )}
-                </p>
+          {data.days.map((day) => {
+            const isHolidayNoFood = day.holiday && day.recipes.length === 1 && day.recipes[0].ingredients?.length === 0;
+            return (
+              <div key={day.id} style={{ marginBottom: 8 }}>
+                <div style={{ padding: "20px 4px 10px" }}>
+                  <p style={{ margin: 0, fontSize: 13, fontFamily: "sans-serif", fontWeight: 700, color: ACCENT, letterSpacing: 1.5, textTransform: "uppercase" }}>
+                    {day.day} · {day.date}
+                    {day.holiday && (
+                      <span style={{ marginLeft: 8, background: ACCENT, color: "white", borderRadius: 10, padding: "2px 8px", fontSize: 11 }}>
+                        {day.holiday_name}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <DaySummary day={day} />
+                {!isHolidayNoFood && day.recipes.map((recipe) => (
+                  <MealCard key={recipe.id} recipe={recipe} />
+                ))}
               </div>
-              <DaySummary day={day} />
-              {day.recipes.map((recipe) => (
-                <MealCard key={recipe.id} recipe={recipe} />
-              ))}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
