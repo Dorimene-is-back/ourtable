@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import MealCard from "../components/MealCard";
 import ShoppingList from "../components/ShoppingList";
-import DaySummary from "../components/DaySummary";
+import WeekTimetable, { isNoCookingDay, recipeAnchor } from "../components/WeekTimetable";
 
 const ACCENT = "#C4956A";
 const DARK = "#2A2A2A";
@@ -110,27 +110,27 @@ export default function WeekPage() {
 
       {tab === "plan" && (
         <div style={{ padding: "16px 14px 0" }}>
-          {data.days.map((day) => {
-            const isHolidayNoFood = day.holiday && day.recipes.length === 1 && day.recipes[0].ingredients?.length === 0;
-            return (
-              <div key={day.id} style={{ marginBottom: 8 }}>
-                <div style={{ padding: "20px 4px 10px" }}>
-                  <p style={{ margin: 0, fontSize: 13, fontFamily: "sans-serif", fontWeight: 700, color: ACCENT, letterSpacing: 1.5, textTransform: "uppercase" }}>
-                    {day.day} · {day.date}
-                    {day.holiday && (
-                      <span style={{ marginLeft: 8, background: ACCENT, color: "white", borderRadius: 10, padding: "2px 8px", fontSize: 11 }}>
-                        {day.holiday_name}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <DaySummary day={day} />
-                {!isHolidayNoFood && day.recipes.map((recipe) => (
-                  <MealCard key={recipe.id} recipe={recipe} />
-                ))}
+          <WeekTimetable days={data.days} />
+
+          {data.days.filter(day => !isNoCookingDay(day) && day.recipes.length > 0).map((day) => (
+            <div key={day.id} style={{ marginBottom: 8 }}>
+              <div style={{ padding: "20px 4px 10px" }}>
+                <p style={{ margin: 0, fontSize: 13, fontFamily: "sans-serif", fontWeight: 700, color: ACCENT, letterSpacing: 1.5, textTransform: "uppercase" }}>
+                  {day.day} · {day.date}
+                  {day.holiday && (
+                    <span style={{ marginLeft: 8, background: ACCENT, color: "white", borderRadius: 10, padding: "2px 8px", fontSize: 11 }}>
+                      {day.holiday_name}
+                    </span>
+                  )}
+                </p>
               </div>
-            );
-          })}
+              {day.recipes.map((recipe) => (
+                <div key={recipe.id} id={recipeAnchor(recipe)} style={{ scrollMarginTop: 64 }}>
+                  <MealCard recipe={recipe} />
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       )}
 

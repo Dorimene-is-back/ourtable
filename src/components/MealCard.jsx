@@ -77,13 +77,6 @@ export default function MealCard({ recipe, defaultExpanded = false }) {
           <ServingBlock key={i} serving={s} color={servingColors[s.for_who] || ACCENT} />
         ))}
 
-        {/* Comments */}
-        {recipe.comments && (
-          <div style={{ background: "#FFF8F0", borderRadius: 8, padding: "10px 14px", border: `1px solid ${BORDER}` }}>
-            <p style={{ margin: 0, fontSize: 13, fontFamily: "sans-serif", color: "#888", lineHeight: 1.6 }}>💡 {recipe.comments}</p>
-          </div>
-        )}
-
         {/* Ref link */}
         {recipe.ref && recipe.ref_url && (
           <RefLink label={recipe.ref} url={recipe.ref_url} color={cardColor} />
