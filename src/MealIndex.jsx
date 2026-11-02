@@ -9,6 +9,13 @@ const BORDER = "#EEE8DE";
 const CREAM = "#FDF6EC";
 const BG = "#FAFAF7";
 
+function sortDays(days) {
+  return [...(days || [])].sort((a, b) => a.id - b.id).map(day => ({
+    ...day,
+    recipes: [...(day.recipes || [])].sort((a, b) => (a.type === "dessert") - (b.type === "dessert")),
+  }));
+}
+
 export default function MealIndex() {
   const [weeks, setWeeks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -66,10 +73,7 @@ export default function MealIndex() {
                 </div>
                 <span style={{ fontSize: 22, marginTop: 2, color: "white" }}>→</span>
               </div>
-              <WeekTimetable dark days={[...(currentWeek.days || [])].sort((a, b) => a.id - b.id).map(day => ({
-                ...day,
-                recipes: [...(day.recipes || [])].sort((a, b) => (a.type === "dessert") - (b.type === "dessert")),
-              }))} />
+              <WeekTimetable dark days={sortDays(currentWeek.days)} />
             </div>
           </>
         )}
@@ -97,16 +101,7 @@ export default function MealIndex() {
                   </div>
                   <span style={{ fontSize: 18, color: "#CCC" }}>→</span>
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {week.days?.sort((a, b) => a.id - b.id).map((day) =>
-                    day.recipes?.filter(r => r.type === "main").map((recipe) => (
-                      <div key={recipe.id} style={{ background: CREAM, borderRadius: 20, padding: "5px 10px", display: "flex", alignItems: "center", gap: 5 }}>
-                        <span style={{ fontSize: 12 }}>{recipe.emoji}</span>
-                        <span style={{ fontSize: 12, fontFamily: "sans-serif", color: "#666" }}>{day.day.slice(0, 3)} · {recipe.title}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
+                <WeekTimetable days={sortDays(week.days)} />
               </div>
             ))}
           </>
