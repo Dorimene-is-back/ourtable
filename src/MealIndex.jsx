@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./lib/supabase";
+import WeekTimetable from "./components/WeekTimetable";
 
 const ACCENT = "#C4956A";
 const DARK = "#2A2A2A";
@@ -18,7 +19,7 @@ export default function MealIndex() {
     async function fetchWeeks() {
       const { data } = await supabase
         .from("weeks")
-        .select(`*, days(*, recipes(*))`)
+        .select(`*, days(*, recipes(*, servings(for_who), ingredients(id)))`)
         .order("id", { ascending: false });
       if (data) setWeeks(data);
       setLoading(false);
@@ -65,19 +66,10 @@ export default function MealIndex() {
                 </div>
                 <span style={{ fontSize: 22, marginTop: 2, color: "white" }}>→</span>
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {currentWeek.days?.sort((a, b) => a.id - b.id).map((day) =>
-                  day.recipes?.filter(r => r.type === "main" && r.id !== "vesak-day-no-cooking").map((recipe) => (
-                    <div key={recipe.id} style={{ background: "rgba(255,255,255,0.1)", borderRadius: 20, padding: "6px 12px", display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 13 }}>{recipe.emoji}</span>
-                      <div>
-                        <span style={{ fontSize: 10, fontFamily: "sans-serif", color: "rgba(255,255,255,0.45)", display: "block", letterSpacing: 0.5 }}>{day.day.slice(0, 3)}</span>
-                        <span style={{ fontSize: 13, fontFamily: "sans-serif", color: "white" }}>{recipe.title}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+              <WeekTimetable dark days={[...(currentWeek.days || [])].sort((a, b) => a.id - b.id).map(day => ({
+                ...day,
+                recipes: [...(day.recipes || [])].sort((a, b) => (a.type === "dessert") - (b.type === "dessert")),
+              }))} />
             </div>
           </>
         )}

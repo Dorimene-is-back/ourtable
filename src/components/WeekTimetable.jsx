@@ -32,35 +32,42 @@ function splitDate(date) {
   return { num, month: rest.join(" ") };
 }
 
-export default function WeekTimetable({ days }) {
+export default function WeekTimetable({ days, dark = false }) {
+  // dark = compact version used inside the "This Week" card on the home page
+  const t = dark
+    ? { bg: "transparent", border: "rgba(255,255,255,0.12)", dayBg: "rgba(255,255,255,0.06)", dayName: "rgba(255,255,255,0.55)", text: "white", muted: "rgba(255,255,255,0.45)", dash: "rgba(255,255,255,0.08)" }
+    : { bg: "white", border: BORDER, dayBg: CREAM, dayName: ACCENT, text: DARK, muted: "#AAA", dash: "#F0E9DD" };
   const jump = (recipe) => {
+    if (dark) return;
     const el = document.getElementById(recipeAnchor(recipe));
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const Row = dark ? "div" : "button";
+
   return (
-    <div style={{ background: "white", border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden", marginBottom: 8 }}>
+    <div style={{ background: t.bg, border: `1px solid ${t.border}`, borderRadius: dark ? 10 : 14, overflow: "hidden", marginBottom: 8 }}>
       {days.map((day, i) => {
         const { num, month } = splitDate(day.date);
         const noCooking = isNoCookingDay(day);
         return (
           <div key={day.id} style={{
             display: "grid",
-            gridTemplateColumns: "64px 1fr",
-            borderTop: i === 0 ? "none" : `1px solid ${BORDER}`,
-            minHeight: 56,
+            gridTemplateColumns: dark ? "52px 1fr" : "64px 1fr",
+            borderTop: i === 0 ? "none" : `1px solid ${t.border}`,
+            minHeight: dark ? 44 : 56,
           }}>
             {/* Day column */}
             <div style={{
-              background: CREAM, borderRight: `1px solid ${BORDER}`,
-              padding: "12px 0", textAlign: "center",
+              background: t.dayBg, borderRight: `1px solid ${t.border}`,
+              padding: dark ? "8px 0" : "12px 0", textAlign: "center",
               display: "flex", flexDirection: "column", justifyContent: "center",
             }}>
-              <span style={{ fontSize: 11, fontFamily: "sans-serif", fontWeight: 700, color: ACCENT, letterSpacing: 1.2, textTransform: "uppercase" }}>
+              <span style={{ fontSize: 11, fontFamily: "sans-serif", fontWeight: 700, color: t.dayName, letterSpacing: 1.2, textTransform: "uppercase" }}>
                 {(day.day || "").slice(0, 3)}
               </span>
-              <span style={{ fontSize: 20, color: DARK, lineHeight: 1.2 }}>{num}</span>
-              <span style={{ fontSize: 10, fontFamily: "sans-serif", color: "#AAA" }}>{month}</span>
+              <span style={{ fontSize: dark ? 16 : 20, color: t.text, lineHeight: 1.2 }}>{num}</span>
+              {!dark && <span style={{ fontSize: 10, fontFamily: "sans-serif", color: t.muted }}>{month}</span>}
             </div>
 
             {/* Entries column */}
@@ -71,22 +78,22 @@ export default function WeekTimetable({ days }) {
                 </p>
               )}
               {noCooking ? (
-                <p style={{ margin: "4px 0", fontSize: 14, fontFamily: "sans-serif", color: "#AAA" }}>No cooking</p>
+                <p style={{ margin: "4px 0", fontSize: 14, fontFamily: "sans-serif", color: t.muted }}>No cooking</p>
               ) : day.recipes.length === 0 ? (
                 <p style={{ margin: "4px 0", fontSize: 14, fontFamily: "sans-serif", color: "#CCC" }}>—</p>
               ) : (
                 day.recipes.map((recipe, j) => {
                   const who = whoLabel(recipe);
                   return (
-                    <button key={recipe.id} onClick={() => jump(recipe)} style={{
+                    <Row key={recipe.id} onClick={() => jump(recipe)} style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
                       background: "none", border: "none", cursor: "pointer", textAlign: "left",
-                      padding: "7px 0", width: "100%",
-                      borderTop: j === 0 ? "none" : "1px dashed #F0E9DD",
+                      padding: dark ? "5px 0" : "7px 0", width: "100%",
+                      borderTop: j === 0 ? "none" : `1px dashed ${t.dash}`,
                     }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                         <span style={{ fontSize: 15, flexShrink: 0 }}>{recipe.emoji}</span>
-                        <span style={{ fontSize: 14, fontFamily: "Georgia, serif", color: DARK, lineHeight: 1.3 }}>{recipe.title}</span>
+                        <span style={{ fontSize: dark ? 13 : 14, fontFamily: dark ? "sans-serif" : "Georgia, serif", color: t.text, lineHeight: 1.3 }}>{recipe.title}</span>
                       </span>
                       {who.text && (
                         <span style={{
@@ -96,7 +103,7 @@ export default function WeekTimetable({ days }) {
                           whiteSpace: "nowrap", letterSpacing: 0.4, textTransform: "uppercase", flexShrink: 0,
                         }}>{who.text}</span>
                       )}
-                    </button>
+                    </Row>
                   );
                 })
               )}
