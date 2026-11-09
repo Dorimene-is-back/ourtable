@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import MealCard from "../components/MealCard";
 import ShoppingList from "../components/ShoppingList";
 import WeekTimetable, { isNoCookingDay, recipeAnchor } from "../components/WeekTimetable";
+import AuthButton from "../components/AuthButton";
 
 const ACCENT = "#C4956A";
 const DARK = "#2A2A2A";
@@ -90,10 +91,15 @@ export default function WeekPage() {
         </button>
       </div>
 
-      <div style={{ background: CREAM, borderBottom: `2px solid ${BORDER}`, padding: "20px 20px 22px", marginTop: 12 }}>
-        <p style={{ margin: "0 0 5px", fontSize: 11, letterSpacing: 3, color: ACCENT, fontFamily: "sans-serif", textTransform: "uppercase", fontWeight: 600 }}>Family Table · 2026</p>
-        <h1 style={{ margin: "0 0 4px", fontSize: 36, fontWeight: "normal", color: DARK, letterSpacing: -0.5 }}>{data.dates}</h1>
-        {data.note && <p style={{ margin: 0, fontSize: 15, color: "#999", fontFamily: "sans-serif", fontWeight: 300 }}>{data.note}</p>}
+      <div style={{ background: CREAM, borderBottom: `2px solid ${BORDER}`, padding: "20px 20px 22px", marginTop: 12, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <p style={{ margin: "0 0 5px", fontSize: 11, letterSpacing: 3, color: ACCENT, fontFamily: "sans-serif", textTransform: "uppercase", fontWeight: 600 }}>Family Table · 2026</p>
+          <h1 style={{ margin: "0 0 4px", fontSize: 36, fontWeight: "normal", color: DARK, letterSpacing: -0.5 }}>{data.dates}</h1>
+          {data.note && <p style={{ margin: 0, fontSize: 15, color: "#999", fontFamily: "sans-serif", fontWeight: 300 }}>{data.note}</p>}
+        </div>
+        <div style={{ paddingTop: 4 }}>
+          <AuthButton />
+        </div>
       </div>
 
       <div style={{ display: "flex", background: "white", borderBottom: `1px solid ${BORDER}`, position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>

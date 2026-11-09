@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./lib/supabase";
 import WeekTimetable from "./components/WeekTimetable";
+import AuthButton from "./components/AuthButton";
 
 const ACCENT = "#C4956A";
 const DARK = "#2A2A2A";
@@ -45,10 +46,15 @@ export default function MealIndex() {
 
   return (
     <div style={{ fontFamily: "Georgia, 'Palatino Linotype', serif", background: BG, minHeight: "100vh", maxWidth: 500, margin: "0 auto", paddingBottom: 60 }}>
-      <div style={{ background: CREAM, borderBottom: `2px solid ${BORDER}`, padding: "32px 22px 26px" }}>
-        <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 3, color: ACCENT, fontFamily: "sans-serif", textTransform: "uppercase", fontWeight: 600 }}>Our Table · Singapore</p>
-        <h1 style={{ margin: "0 0 6px", fontSize: 34, fontWeight: "normal", color: DARK, letterSpacing: -0.5, lineHeight: 1.1 }}>Family Table</h1>
-        <p style={{ margin: 0, fontSize: 15, color: "#AAA", fontFamily: "sans-serif", fontWeight: 300 }}>Weekly meal plans · 1 adult + 2 kids</p>
+      <div style={{ background: CREAM, borderBottom: `2px solid ${BORDER}`, padding: "32px 22px 26px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 3, color: ACCENT, fontFamily: "sans-serif", textTransform: "uppercase", fontWeight: 600 }}>Our Table · Singapore</p>
+          <h1 style={{ margin: "0 0 6px", fontSize: 34, fontWeight: "normal", color: DARK, letterSpacing: -0.5, lineHeight: 1.1 }}>Family Table</h1>
+          <p style={{ margin: 0, fontSize: 15, color: "#AAA", fontFamily: "sans-serif", fontWeight: 300 }}>Weekly meal plans · 1 adult + 2 kids</p>
+        </div>
+        <div style={{ paddingTop: 4 }}>
+          <AuthButton />
+        </div>
       </div>
 
       <div style={{ padding: "20px 16px 0" }}>

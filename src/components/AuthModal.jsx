@@ -1,0 +1,156 @@
+import { useState } from 'react'
+import { useAuth } from '../lib/useAuth'
+
+const ACCENT = '#C4956A'
+const BORDER = '#EEE8DE'
+
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" style={{ flexShrink: 0 }}>
+    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 12.075 17.64 9.767 17.64 9.2z"/>
+    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+    <path fill="#FBBC05" d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/>
+    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z"/>
+  </svg>
+)
+
+export default function AuthModal({ onClose }) {
+  const { signInWithGoogle, signInWithMagicLink } = useAuth()
+  const [email, setEmail] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleMagicLink(e) {
+    e.preventDefault()
+    if (!email.trim()) return
+    setSending(true)
+    setError(null)
+    const { error } = await signInWithMagicLink(email.trim())
+    setSending(false)
+    if (error) {
+      setError(error.message)
+    } else {
+      setSent(true)
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(42,42,42,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 1000, padding: '0 16px',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'white', borderRadius: 20,
+          padding: '36px 28px 32px',
+          width: '100%', maxWidth: 360,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+          position: 'relative',
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: 16, right: 16,
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 20, color: '#BBB', lineHeight: 1, padding: 4,
+          }}
+        >
+          ×
+        </button>
+
+        <p style={{ margin: '0 0 4px', fontSize: 11, letterSpacing: 3, color: ACCENT, fontFamily: 'sans-serif', textTransform: 'uppercase', fontWeight: 600 }}>
+          Our Table
+        </p>
+        <h2 style={{ margin: '0 0 24px', fontSize: 26, fontWeight: 'normal', fontFamily: "Georgia, 'Palatino Linotype', serif", color: '#2A2A2A', letterSpacing: -0.3 }}>
+          Sign in
+        </h2>
+
+        {sent ? (
+          <div style={{ textAlign: 'center', padding: '16px 0 8px' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>✉️</div>
+            <p style={{ margin: '0 0 6px', fontFamily: 'sans-serif', fontSize: 15, color: '#2A2A2A', fontWeight: 600 }}>
+              Check your inbox
+            </p>
+            <p style={{ margin: 0, fontFamily: 'sans-serif', fontSize: 13, color: '#AAA', lineHeight: 1.5 }}>
+              We sent a magic link to<br /><strong style={{ color: '#666' }}>{email}</strong>
+            </p>
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={signInWithGoogle}
+              style={{
+                width: '100%', padding: '12px 16px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                background: 'white', border: `1.5px solid ${BORDER}`,
+                borderRadius: 10, cursor: 'pointer',
+                fontFamily: 'sans-serif', fontSize: 14, fontWeight: 500, color: '#333',
+                transition: 'border-color 0.15s, box-shadow 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#CCC'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = 'none' }}
+            >
+              <GoogleIcon />
+              Continue with Google
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+              <div style={{ flex: 1, height: 1, background: BORDER }} />
+              <span style={{ fontFamily: 'sans-serif', fontSize: 12, color: '#CCC', letterSpacing: 0.5 }}>or</span>
+              <div style={{ flex: 1, height: 1, background: BORDER }} />
+            </div>
+
+            <form onSubmit={handleMagicLink}>
+              <label style={{ display: 'block', fontFamily: 'sans-serif', fontSize: 12, color: '#999', marginBottom: 6, letterSpacing: 0.3 }}>
+                Email address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                style={{
+                  width: '100%', padding: '11px 14px',
+                  border: `1.5px solid ${BORDER}`, borderRadius: 10,
+                  fontFamily: 'sans-serif', fontSize: 14, color: '#333',
+                  outline: 'none', boxSizing: 'border-box',
+                  transition: 'border-color 0.15s',
+                }}
+                onFocus={e => { e.currentTarget.style.borderColor = ACCENT }}
+                onBlur={e => { e.currentTarget.style.borderColor = BORDER }}
+              />
+
+              {error && (
+                <p style={{ margin: '8px 0 0', fontFamily: 'sans-serif', fontSize: 12, color: '#E05' }}>
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={sending}
+                style={{
+                  width: '100%', marginTop: 12, padding: '12px 16px',
+                  background: sending ? '#DDD' : ACCENT, border: 'none',
+                  borderRadius: 10, cursor: sending ? 'default' : 'pointer',
+                  fontFamily: 'sans-serif', fontSize: 14, fontWeight: 600,
+                  color: 'white', transition: 'background 0.15s',
+                }}
+              >
+                {sending ? 'Sending…' : 'Send magic link'}
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
