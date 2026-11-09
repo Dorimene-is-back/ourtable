@@ -83,10 +83,10 @@ export default function Week() {
         </div>
         <Segments view={view} onChange={setView} />
         {week && view === "shopping" && (
-          <>
-            <p style={{ marginTop: 12, fontSize: 16, fontWeight: 800, textAlign: "right" }}>{shopping.done.length} / {shopping.total}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 10 }}>
             <ShoppingProgress done={shopping.done.length} total={shopping.total} />
-          </>
+            <span style={{ fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{shopping.done.length} / {shopping.total}</span>
+          </div>
         )}
       </RedHeader>
       {loading && <Message>Loading…</Message>}

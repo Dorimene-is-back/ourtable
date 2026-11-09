@@ -47,16 +47,16 @@ export function useShopping(week) {
   return { total: items.length, done, groups, toggle };
 }
 
-export function ShoppingProgress({ done, total }) {
+export function ShoppingProgress({ done, total, style }) {
   const pct = total ? Math.round((done / total) * 100) : 0;
   return (
-    <div role="progressbar" aria-label="Items in the basket" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} style={{ marginTop: 12, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.35)", overflow: "hidden" }}>
-      <div style={{ width: `${pct}%`, height: 8, borderRadius: 999, background: "var(--white)" }} />
+    <div role="progressbar" aria-label="Items in the basket" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} style={{ flex: 1, height: 6, borderRadius: 999, background: "rgba(255,255,255,0.35)", overflow: "hidden", ...style }}>
+      <div style={{ width: `${pct}%`, height: 6, borderRadius: 999, background: "var(--white)" }} />
     </div>
   );
 }
 
-const rowStyle = { width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "8px 0", border: "none", borderBottom: "2px solid var(--line)", background: "transparent", textAlign: "left" };
+const rowStyle = { width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "4px 0", border: "none", borderBottom: "2px solid var(--line)", background: "transparent", textAlign: "left" };
 
 export function ShoppingBody({ shopping }) {
   const [basketOpen, setBasketOpen] = useState(false);
@@ -67,28 +67,28 @@ export function ShoppingBody({ shopping }) {
   return (
     <main style={{ padding: "0 20px" }}>
       {groups.map((group) => (
-        <section key={group.day} style={{ paddingTop: 16 }}>
-          <h2 style={{ fontWeight: 800, fontSize: 18, letterSpacing: -0.5 }}>{group.day}</h2>
+        <section key={group.day} style={{ paddingTop: 10 }}>
+          <h2 style={{ fontWeight: 800, fontSize: 14, color: "var(--muted)" }}>{group.day}</h2>
           {group.items.map((item) => (
-            <button key={item.id} onClick={() => toggle(item.id)} style={{ ...rowStyle, minHeight: 56 }}>
-              <span style={{ width: 26, height: 26, borderRadius: 8, border: "2.5px solid var(--ink)", flexShrink: 0 }} />
-              <span style={{ fontSize: 18, lineHeight: 1.3 }}>{item.item}</span>
+            <button key={item.id} onClick={() => toggle(item.id)} style={{ ...rowStyle, minHeight: 44 }}>
+              <span style={{ width: 22, height: 22, borderRadius: 7, border: "2px solid var(--ink)", flexShrink: 0 }} />
+              <span style={{ fontSize: 16, lineHeight: 1.25 }}>{item.item}</span>
             </button>
           ))}
         </section>
       ))}
 
-      <button onClick={() => setBasketOpen((open) => !open)} aria-expanded={basketOpen} style={{ marginTop: 20, width: "100%", minHeight: 52, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", border: "none", borderRadius: 16, background: "var(--chip)" }}>
-        <span style={{ fontSize: 17, fontWeight: 800 }}>In the basket · {done.length}</span>
+      <button onClick={() => setBasketOpen((open) => !open)} aria-expanded={basketOpen} style={{ marginTop: 14, width: "100%", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", border: "none", borderRadius: 16, background: "var(--chip)" }}>
+        <span style={{ fontSize: 16, fontWeight: 800 }}>In the basket · {done.length}</span>
         <span style={{ fontSize: 15, color: "var(--muted)" }}>{basketOpen ? "Hide" : "Show"}</span>
       </button>
 
       {basketOpen && done.map((item) => (
-        <button key={item.id} onClick={() => toggle(item.id)} style={{ ...rowStyle, minHeight: 50, color: "var(--muted)" }}>
-          <span style={{ width: 26, height: 26, borderRadius: 8, background: "var(--tomato)", color: "var(--white)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5 9-10" /></svg>
+        <button key={item.id} onClick={() => toggle(item.id)} style={{ ...rowStyle, minHeight: 44, color: "var(--muted)" }}>
+          <span style={{ width: 22, height: 22, borderRadius: 7, background: "var(--tomato)", color: "var(--white)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5 9-10" /></svg>
           </span>
-          <span style={{ fontSize: 17, lineHeight: 1.3, textDecoration: "line-through" }}>{item.item}</span>
+          <span style={{ fontSize: 16, lineHeight: 1.25, textDecoration: "line-through" }}>{item.item}</span>
         </button>
       ))}
     </main>

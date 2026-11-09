@@ -8,7 +8,7 @@ import { dayDate, servingLabel, shortDate } from "../lib/weeks";
 
 const isHeader = (row) => row.value.startsWith("—");
 const headerText = (row) => row.value.replace(/^[—\s]+|[—\s]+$/g, "");
-const timerLabel = (min) => (min % 60 === 0 ? `Start ${min / 60} h timer` : `Start ${min} min timer`);
+const timerLabel = (min) => `Start ${min} min timer`;
 
 function ClockIcon() {
   return <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2M9 2h6" /></svg>;

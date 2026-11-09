@@ -16,18 +16,18 @@ export default function Shopping() {
 
   return (
     <AppShell withTabBar>
-      <RedHeader>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", minHeight: 44 }}>
-          <h1 style={{ fontWeight: 800, fontSize: 32, lineHeight: 1.1, letterSpacing: -1.4 }}>Shopping</h1>
-          {week && <span style={{ fontSize: 16, fontWeight: 800 }}>{shopping.done.length} / {shopping.total}</span>}
+      <RedHeader style={{ position: "sticky", top: 0, zIndex: 5, padding: "calc(var(--safe-top) + 10px) 20px 10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <h1 style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.1, letterSpacing: -0.8 }}>Shopping</h1>
+          {week && <ShoppingProgress done={shopping.done.length} total={shopping.total} />}
+          {week && <span style={{ fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{shopping.done.length} / {shopping.total}</span>}
         </div>
-        {week && data.kind !== "this" && <p style={{ fontSize: 15, fontWeight: 600 }}>{weekTitle(week)}</p>}
-        {week && <ShoppingProgress done={shopping.done.length} total={shopping.total} />}
+        {week && data.kind !== "this" && <p style={{ marginTop: 2, fontSize: 14, fontWeight: 600 }}>{weekTitle(week)}</p>}
       </RedHeader>
       {loading && <Message>Loading…</Message>}
       {error && <Message>Couldn’t load the list. Check your connection and try again.</Message>}
       {week && <ShoppingBody shopping={shopping} />}
-      <TabBar />
+      <TabBar hideOnScroll />
     </AppShell>
   );
 }

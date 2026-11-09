@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 export function AppShell({ children, withTabBar = false }) {
@@ -60,10 +60,29 @@ const TABS = [
   { to: "/weeks", label: "Past weeks", icon: <path d="M4 6h16M4 12h16M4 18h10" /> },
 ];
 
-export function TabBar() {
+// Slides away while scrolling down and returns on scroll up, to free the screen on long lists.
+function useHiddenOnScrollDown(enabled) {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    if (!enabled) return undefined;
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (Math.abs(y - last) < 8) return;
+      setHidden(y > last && y > 40);
+      last = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [enabled]);
+  return hidden;
+}
+
+export function TabBar({ hideOnScroll = false }) {
   const { pathname } = useLocation();
+  const hidden = useHiddenOnScrollDown(hideOnScroll);
   return (
-    <nav aria-label="Main" style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", width: "min(calc(100% - 40px), 460px)", bottom: "calc(16px + var(--safe-bottom))", height: 66, borderRadius: 24, background: "var(--white)", border: "2px solid var(--line)", boxShadow: "0 10px 28px rgba(26,15,12,0.14)", display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0 8px", zIndex: 10 }}>
+    <nav aria-label="Main" style={{ position: "fixed", left: "50%", transform: `translate(-50%, ${hidden ? "calc(100% + 40px)" : "0"})`, transition: "transform 0.2s ease", width: "min(calc(100% - 40px), 460px)", bottom: "calc(16px + var(--safe-bottom))", height: 66, borderRadius: 24, background: "var(--white)", border: "2px solid var(--line)", boxShadow: "0 10px 28px rgba(26,15,12,0.14)", display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0 8px", zIndex: 10 }}>
       {TABS.map((tab) => {
         const active = pathname === tab.to;
         return (
