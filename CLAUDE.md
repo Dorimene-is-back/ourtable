@@ -14,52 +14,47 @@ No test suite configured.
 
 ## Architecture
 
-**ourtable** is a family weekly meal planner — a React SPA backed by Supabase. It is mobile-first (max-width 500px) and styled entirely with inline styles (no CSS files or Tailwind).
+**Tambouille** (repo name `ourtable`) is a family weekly meal planner: a React SPA backed by Supabase. Mobile first (designed at 390px, max width 500px). The brief and approved design are linked from `docs/REDESIGN.md`.
 
 ### Routing
 
-`App.jsx` has two routes:
-- `/` → `MealIndex` — lists all weeks (current week card + past weeks list)
-- `/weeks/:weekId` → `WeekPage` — detail view for a week with two tabs: Meal Plan and Shopping List
+`App.jsx` routes (`src/pages/`):
+- `/` → `Home`: tonight and this week
+- `/shopping` → `Shopping`: the current week's list
+- `/weeks` → `AllWeeks`: calendar of every week
+- `/weeks/:weekId` → `Week`: plan, plus a Shopping segment (`?view=shopping`)
+- `/weeks/:weekId/:recipeId` → `Recipe`: ingredients, method, timers, wake lock
+
+`vercel.json` rewrites every path to `index.html` so these survive a reload.
 
 ### Data model (Supabase)
 
 ```
-weeks         id (string, e.g. "2026-05-25"), dates, note
-  └─ days     id, day ("Monday"), date, holiday, holiday_name, sort by id
-       └─ recipes   id, type ("main"|"dessert"), emoji, title, subtitle, image, comments, ref, ref_url
+weeks         id (Monday's date, e.g. "2026-05-25"), dates, note
+  └─ days     id, day ("Monday"), date, holiday, holiday_name
+       └─ recipes   id, type ("main"|"dessert"), title, image, comments, prep_ahead, ref, ref_url, sort_order
             ├─ servings     for_who ("kids"|"adult"|"all"), count, notes
             ├─ ingredients  sort_order, value  (values starting with "—" are section headers)
-            └─ steps        sort_order, value  (same header convention)
+            └─ steps        sort_order, value, timer_minutes, meanwhile  (same header convention)
   └─ shopping  day, day_order, sort_order, item
 ```
 
-`WeekPage` fetches the full tree in a single Supabase query. `MealIndex` fetches a lighter version (`weeks` + `days` + `recipes` only, no servings/ingredients/steps).
+- `steps.timer_minutes` drives the timer button, `steps.meanwhile` the "Meanwhile" line, `recipes.prep_ahead` the "Ahead" note. All are nullable, and the UI hides each one when empty. New weeks must set them at import.
+- `recipes.comments` is planning notes and is no longer shown.
+- `src/lib/data.js` fetches and caches; `src/lib/weeks.js` holds the date and display rules (who-for label, main dish, which week is current).
 
 ### Auth
 
-`src/lib/useAuth.js` — custom hook wrapping Supabase auth. Exposes `user`, `loading`, `signInWithGoogle`, `signInWithMagicLink`, `signOut`. Both pages render `<AuthButton />` in the header; it shows "Sign in" or an avatar/dropdown depending on auth state. The auth modal (`AuthModal.jsx`) offers Google OAuth or email magic link.
+`src/lib/useAuth.js` wraps Supabase auth (`user`, `loading`, `signInWithGoogle`, `signInWithMagicLink`, `signOut`). `AuthButton` is in the Home header and opens `AuthModal` (Google OAuth or email magic link).
 
-### Design tokens (repeated across all files)
+### Styling
 
-```js
-const ACCENT = "#C4956A";   // warm terracotta — primary brand color
-const DARK   = "#2A2A2A";   // near-black text
-const BORDER = "#EEE8DE";   // warm beige border
-const CREAM  = "#FDF6EC";   // warm cream background (cards, headers)
-const BG     = "#FAFAF7";   // page background
-```
-
-These are copy-pasted per file — not shared constants. Keep this pattern when editing.
-
-### Ingredient/step headers
-
-Lines whose `value` starts with `"—"` render as a section sub-header (uppercase, accent color) instead of a bullet. The `—` is stripped before display.
+Inline styles using the CSS variables in `src/index.css` (`--tomato`, `--tomato-dark`, `--tomato-tint`, `--ink`, `--muted`, `--line`, `--chip`, `--white`). Never hardcode brand colours. Red means "now / active / primary" only. Bricolage Grotesque everywhere, sentence case, no emoji. Shared pieces (header, back button, tab bar, photo) are in `src/components/ui.jsx`.
 
 ### Holiday days
 
-A day with `holiday: true` and a single recipe with no ingredients is treated as a "no-cooking" day: `WeekPage` and `Week20260525` skip the MealCard, and `DaySummary` renders a simplified comment-only block.
+A day with `holiday: true` whose recipes have no ingredients is a "no-cooking" day: its title shows as plain text and it has no main dish.
 
-### `Week20260525.jsx`
+### PWA
 
-Legacy page that hardcodes the week id `"2026-05-25"`. The generic `WeekPage` supersedes it; it can be ignored or deleted when no longer needed.
+`public/manifest.webmanifest` makes the app installable. `public/sw.js` caches nothing and exists only for timer notifications; it is registered only when running installed.
