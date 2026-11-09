@@ -122,3 +122,25 @@ export function pickWeek(weeks, today) {
   const latest = [...weeks].sort((a, b) => b.id.localeCompare(a.id)).find((w) => w.id < toISO(monday));
   return { week: latest || weeks[0], kind: "latest" };
 }
+
+// Shop order for the "by type" view. Pantry items are listed separately as pantry checks.
+export const SHOPPING_TYPES = ["Vegetables", "Fruit", "Herbs", "Meat", "Fish", "Dairy & eggs", "Pasta, rice & noodles", "Bread & dough", "Tins & stock", "Nuts", "Other"];
+
+// A week's shopping, one group per shopping date, each item carrying its date and recipe name.
+export function shoppingDates(week) {
+  const titles = new Map(week.days.flatMap((d) => d.recipes.map((r) => [r.id, r.title])));
+  const groups = [];
+  [...(week.shopping || [])]
+    .filter((item) => item.category !== "Note")
+    .sort((a, b) => (a.day_order || 0) - (b.day_order || 0) || a.sort_order - b.sort_order)
+    .forEach((item) => {
+      let group = groups.find((g) => g.label === item.day);
+      if (!group) {
+        const day = week.days.find((d) => item.day.startsWith(dayShort(d)));
+        group = { key: `${week.id}:${item.day}`, label: item.day, date: day ? dayDate(week.id, day) : null, items: [] };
+        groups.push(group);
+      }
+      group.items.push({ ...item, recipeTitle: titles.get(item.recipe_id) || "" });
+    });
+  return groups;
+}

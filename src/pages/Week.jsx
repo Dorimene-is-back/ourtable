@@ -1,9 +1,10 @@
+import { useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import DayRows from "../components/DayRows";
 import { ShoppingBody, ShoppingProgress, useShopping } from "../components/Shopping";
 import { AppShell, BackButton, Message, RedHeader, SmallBowl } from "../components/ui";
 import { fetchWeek, useLoad } from "../lib/data";
-import { startOfToday, weekTitle } from "../lib/weeks";
+import { shoppingDates, startOfToday, weekTitle } from "../lib/weeks";
 
 function Segments({ view, onChange }) {
   const tab = (id, label) => {
@@ -26,7 +27,8 @@ export default function Week() {
   const { weekId } = useParams();
   const [params, setParams] = useSearchParams();
   const { data: week, loading, error } = useLoad(() => fetchWeek(weekId), [weekId]);
-  const shopping = useShopping(week);
+  const dates = useMemo(() => (week ? shoppingDates(week) : []), [week]);
+  const shopping = useShopping(dates);
   const view = params.get("view") === "shopping" ? "shopping" : "plan";
   const setView = (next) => setParams(next === "shopping" ? { view: next } : {}, { replace: true });
 

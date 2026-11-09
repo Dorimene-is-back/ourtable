@@ -36,10 +36,11 @@ weeks         id (Monday's date, e.g. "2026-05-25"), dates, note
             ├─ servings     for_who ("kids"|"adult"|"all"), count, notes
             ├─ ingredients  sort_order, value  (values starting with "—" are section headers)
             └─ steps        sort_order, value, timer_minutes, meanwhile  (same header convention)
-  └─ shopping  day, day_order, sort_order, item
+  └─ shopping  day, day_order, sort_order, item, category, recipe_id
 ```
 
 - `steps.timer_minutes` drives the timer button, `steps.meanwhile` the "Meanwhile" line, `recipes.prep_ahead` the "Ahead" note. All are nullable, and the UI hides each one when empty. New weeks must set them at import. Set `timer_minutes` only for waits under 60 minutes, where you are still in the app cooking.
+- `shopping.category` is one of Pantry, Vegetables, Fruit, Herbs, Meat, Fish, Dairy & eggs, Pasta, rice & noodles, Bread & dough, Tins & stock, Nuts, Other (Note rows are hidden). `Pantry` items appear as pantry checks. `shopping.recipe_id` names the recipe the item is for. New weeks must set both at import.
 - `recipes.comments` is planning notes and is no longer shown.
 - `src/lib/data.js` fetches and caches; `src/lib/weeks.js` holds the date and display rules (who-for label, main dish, which week is current).
 
