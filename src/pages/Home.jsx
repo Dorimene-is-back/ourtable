@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import AuthButton from "../components/AuthButton";
-import { AppShell, Chevron, Logo, Message, Photo, RedHeader, TabBar } from "../components/ui";
+import DayRows from "../components/DayRows";
+import { AppShell, Logo, Message, Photo, RedHeader, TabBar } from "../components/ui";
 import { fetchWeeks, useLoad } from "../lib/data";
-import { dayAnchor, dayDate, dayNumber, dayShort, findDay, isNoCookingDay, mainDish, pickWeek, shortDate, startOfToday, toISO, weekTitle, whoFor } from "../lib/weeks";
+import { findDay, isNoCookingDay, mainDish, pickWeek, shortDate, startOfToday, weekTitle, whoFor } from "../lib/weeks";
 
 const HEADINGS = { this: "This week", next: "Next week", latest: "Last planned" };
 
@@ -54,32 +55,11 @@ function WeekRows({ picked, today }) {
   const { week, kind } = picked;
   return (
     <section style={{ padding: "26px 20px 0" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "3px solid var(--ink)", paddingBottom: 4 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", borderBottom: "3px solid var(--ink)", paddingBottom: 6 }}>
         <h2 style={{ fontWeight: 800, fontSize: 28, lineHeight: 1, letterSpacing: -1 }}>{HEADINGS[kind]}</h2>
-        <Link to={`/weeks/${week.id}`} aria-label={`Open the full week, ${weekTitle(week)}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 44, fontSize: 16, fontWeight: 600 }}>
-          Full week<Chevron />
-        </Link>
+        <span style={{ fontSize: 15, color: "var(--muted)" }}>{weekTitle(week)}</span>
       </div>
-
-      {week.days.map((day) => {
-        const date = toISO(dayDate(week.id, day));
-        const isToday = date === toISO(today);
-        const isPast = date < toISO(today);
-        const noCooking = isNoCookingDay(day);
-        return (
-          <Link key={day.id} to={`/weeks/${week.id}#${dayAnchor(day)}`} style={{ display: "grid", gridTemplateColumns: "46px 1fr", gap: 12, padding: "10px 0", borderBottom: "2px solid var(--line)", color: isPast ? "var(--muted)" : "var(--ink)" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{dayShort(day)}</span>
-              <span style={{ width: 34, height: 34, borderRadius: 999, background: isToday ? "var(--tomato)" : "transparent", color: isToday ? "var(--white)" : "inherit", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 19 }}>{dayNumber(day)}</span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 3, justifyContent: "center" }}>
-              {noCooking
-                ? <span style={{ fontSize: 15, fontWeight: 500, color: "var(--muted)" }}>{day.recipes[0]?.title || day.holiday_name}</span>
-                : day.recipes.map((r) => <DishLine key={r.id} recipe={r} size={15} weight={500} whoSize={13} />)}
-            </div>
-          </Link>
-        );
-      })}
+      <DayRows week={week} today={today} dimPast />
     </section>
   );
 }

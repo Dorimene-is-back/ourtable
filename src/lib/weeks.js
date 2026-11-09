@@ -47,7 +47,6 @@ export function weekRangeLabel(monday) {
 export const dayDate = (weekId, day) => addDays(parseISO(weekId), DAY_INDEX[day.day] ?? 0);
 export const dayShort = (day) => day.day.slice(0, 3);
 export const dayNumber = (day) => (day.date || "").split(" ")[0];
-export const dayAnchor = (day) => `day-${dayShort(day).toLowerCase()}`;
 
 // "2–6 November", or "31 August–2 September" across two months.
 export function weekTitle(week) {

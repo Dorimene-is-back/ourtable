@@ -1,9 +1,9 @@
-import { useEffect } from "react";
-import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+import DayRows from "../components/DayRows";
 import { ShoppingBody, ShoppingProgress, useShopping } from "../components/Shopping";
-import { AppShell, BackButton, Message, Photo, RedHeader, SmallBowl } from "../components/ui";
+import { AppShell, BackButton, Message, RedHeader, SmallBowl } from "../components/ui";
 import { fetchWeek, useLoad } from "../lib/data";
-import { dayAnchor, dayDate, dayNumber, dayShort, isNoCookingDay, startOfToday, toISO, weekTitle, whoFor } from "../lib/weeks";
+import { startOfToday, weekTitle } from "../lib/weeks";
 
 function Segments({ view, onChange }) {
   const tab = (id, label) => {
@@ -22,56 +22,13 @@ function Segments({ view, onChange }) {
   );
 }
 
-function Plan({ week, today }) {
-  const isToday = (day) => toISO(dayDate(week.id, day)) === toISO(today);
-  const jump = (day) => document.getElementById(dayAnchor(day))?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  return (
-    <>
-      <div style={{ display: "flex", gap: 6, padding: "12px 20px", borderBottom: "2px solid var(--line)" }}>
-        {week.days.map((day) => (
-          <button key={day.id} onClick={() => jump(day)} style={{ flex: 1, minWidth: 0, height: 52, border: "none", borderRadius: 14, background: isToday(day) ? "var(--tomato)" : "var(--chip)", color: isToday(day) ? "var(--white)" : "var(--ink)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>{dayShort(day)}</span>
-            <span style={{ fontSize: 20, fontWeight: 800, lineHeight: 1 }}>{dayNumber(day)}</span>
-          </button>
-        ))}
-      </div>
-
-      <main style={{ padding: "0 20px" }}>
-        {week.days.map((day) => (
-          <section key={day.id} id={dayAnchor(day)} style={{ paddingTop: 18, scrollMarginTop: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2 style={{ fontWeight: 800, fontSize: 22, lineHeight: 1, letterSpacing: -0.8 }}>{day.day} {dayNumber(day)}</h2>
-              {isToday(day) && <span style={{ fontSize: 15, fontWeight: 800, color: "var(--tomato)" }}>Tonight</span>}
-            </div>
-            {isNoCookingDay(day) ? (
-              <p style={{ minHeight: 64, display: "flex", alignItems: "center", fontSize: 16, color: "var(--muted)", borderBottom: "2px solid var(--line)" }}>{day.recipes[0]?.title || day.holiday_name}</p>
-            ) : day.recipes.map((recipe) => (
-              <Link key={recipe.id} to={`/weeks/${week.id}/${recipe.id}`} style={{ display: "flex", gap: 12, alignItems: "center", minHeight: 64, padding: "6px 0", borderBottom: "2px solid var(--line)" }}>
-                <Photo src={recipe.image} size={52} radius={12} />
-                <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 600, lineHeight: 1.25 }}>{recipe.title}</span>
-                <span style={{ fontSize: 14, color: "var(--muted)", flexShrink: 0 }}>{whoFor(recipe)}</span>
-              </Link>
-            ))}
-          </section>
-        ))}
-      </main>
-    </>
-  );
-}
-
 export default function Week() {
   const { weekId } = useParams();
-  const { hash } = useLocation();
   const [params, setParams] = useSearchParams();
   const { data: week, loading, error } = useLoad(() => fetchWeek(weekId), [weekId]);
   const shopping = useShopping(week);
   const view = params.get("view") === "shopping" ? "shopping" : "plan";
   const setView = (next) => setParams(next === "shopping" ? { view: next } : {}, { replace: true });
-
-  useEffect(() => {
-    if (week && hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });
-  }, [week, hash]);
 
   return (
     <AppShell>
@@ -91,7 +48,7 @@ export default function Week() {
       </RedHeader>
       {loading && <Message>Loading…</Message>}
       {error && <Message>Couldn’t load this week.</Message>}
-      {week && (view === "plan" ? <Plan week={week} today={startOfToday()} /> : <ShoppingBody shopping={shopping} />)}
+      {week && (view === "plan" ? <main style={{ padding: "4px 20px 0" }}><DayRows week={week} today={startOfToday()} /></main> : <ShoppingBody shopping={shopping} />)}
     </AppShell>
   );
 }
