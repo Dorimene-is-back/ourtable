@@ -29,7 +29,7 @@ function Ingredients({ rows }) {
       <button onClick={() => setOpen((o) => !o)} aria-expanded={open} style={{ marginTop: 14, width: "100%", minHeight: 56, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "0 16px", border: "2px solid var(--ink)", borderRadius: 16, background: "var(--white)" }}>
         <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.6 }}>Ingredients</span>
         <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 15, fontWeight: 500, color: "var(--muted)" }}>{count} items</span>
+          <span style={{ fontSize: 15, fontWeight: 500, color: "var(--muted)" }}>{count} {count === 1 ? "item" : "items"}</span>
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d={open ? "M5 15l7-7 7 7" : "M5 9l7 7 7-7"} /></svg>
         </span>
       </button>
