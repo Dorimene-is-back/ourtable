@@ -29,40 +29,47 @@ function buildMonths(weeks, today) {
   return months.filter((m) => m.rows.some((r) => r.week) || m.rows.some((r) => toISO(r.monday) === toISO(thisMonday)));
 }
 
-function Tile({ number, recipe }) {
+// A planned day opens its dish (the recipe in the photo); an empty day does nothing.
+function Tile({ number, recipe, weekId, label }) {
   const filled = !!recipe;
-  return (
+  const tile = (
     <div style={{ aspectRatio: "1", borderRadius: 12, background: filled ? "var(--ink)" : "var(--chip)", position: "relative", overflow: "hidden" }}>
       {filled && <Photo src={recipe.image} placeholder="var(--ink)" style={{ position: "absolute", inset: 0 }} />}
       <span style={{ position: "absolute", left: 6, top: 4, fontSize: 15, fontWeight: 800, color: filled ? "var(--white)" : "var(--muted)", textShadow: filled ? "0 1px 3px rgba(0,0,0,0.75)" : "none" }}>{number}</span>
     </div>
   );
+  if (!filled) return tile;
+  return <Link to={`/weeks/${weekId}/${recipe.id}`} aria-label={`${label}: ${recipe.title}`} style={{ display: "block" }}>{tile}</Link>;
 }
 
+// The week label opens the week; each tile opens its own day.
 function WeekRow({ monday, week, isCurrent }) {
-  const tiles = WEEKDAYS.map((_, i) => {
+  const tiles = WEEKDAYS.map((weekday, i) => {
     const date = addDays(monday, i);
     const day = week?.days.find((d) => toISO(dayDate(week.id, d)) === toISO(date));
-    return { number: date.getDate(), recipe: day ? mainDish(day) : null };
+    return { number: date.getDate(), recipe: day ? mainDish(day) : null, weekId: week?.id, label: `${weekday} ${date.getDate()}` };
   });
   const range = weekRangeLabel(monday);
   const number = isoWeekNumber(monday);
 
-  const content = (
+  const heading = (
     <>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 5 }}>
-        <span style={{ fontSize: 14, fontWeight: 800, color: isCurrent ? "var(--tomato)" : "var(--ink)" }}>W{number}</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 14, fontWeight: 600, color: isCurrent ? "var(--tomato)" : week ? "var(--ink)" : "var(--muted)" }}>
-          {range}{isCurrent ? " · this week" : ""}{week && <Chevron size={14} stroke={2.8} />}
-        </span>
-      </div>
-      <div style={gridColumns}>{tiles.map((t) => <Tile key={t.number} {...t} />)}</div>
+      <span style={{ fontSize: 14, fontWeight: 800, color: isCurrent ? "var(--tomato)" : "var(--ink)" }}>W{number}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 14, fontWeight: 600, color: isCurrent ? "var(--tomato)" : week ? "var(--ink)" : "var(--muted)" }}>
+        {range}{isCurrent ? " · this week" : ""}{week && <Chevron size={14} stroke={2.8} />}
+      </span>
     </>
   );
+  const headingStyle = { display: "inline-flex", gap: 8, alignItems: "center", minHeight: 32, marginBottom: 2 };
 
-  const box = { display: "block", padding: 6, margin: "0 -6px" };
-  if (!week) return <div style={box}>{content}</div>;
-  return <Link to={`/weeks/${week.id}`} aria-label={`Open week ${number}, ${range}`} style={box}>{content}</Link>;
+  return (
+    <div style={{ padding: "4px 0" }}>
+      {week
+        ? <Link to={`/weeks/${week.id}`} aria-label={`Open week ${number}, ${range}`} style={headingStyle}>{heading}</Link>
+        : <div style={headingStyle}>{heading}</div>}
+      <div style={gridColumns}>{tiles.map((t) => <Tile key={t.number} {...t} />)}</div>
+    </div>
+  );
 }
 
 export default function AllWeeks() {
