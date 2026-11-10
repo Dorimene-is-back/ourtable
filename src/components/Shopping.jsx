@@ -272,7 +272,10 @@ export function ShoppingBody({ shopping }) {
               <section style={{ marginBottom: 16 }}>
                 <button onClick={() => setPantryOpen((o) => !o)} aria-expanded={pantryOpen} style={{ ...foldStyle, padding: 0, background: "none", borderRadius: 0 }}>
                   <span style={{ fontSize: 16, fontWeight: 800 }}>Check the cupboard</span>
-                  <span style={{ fontSize: 15, color: "var(--muted)" }}>{missing ? `${missing} to check` : "All there"} · {pantryOpen ? "Hide" : "Show"}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 15, color: "var(--muted)" }}>
+                    {missing ? `${missing} to check` : "All there"}
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: pantryOpen ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.15s" }}><path d="M6 9l6 6 6-6" /></svg>
+                  </span>
                 </button>
                 {pantryOpen && (
                   <>
