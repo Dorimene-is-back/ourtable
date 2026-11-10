@@ -1,6 +1,6 @@
 import { DatePicker, ShoppingBody, ShoppingProgress, useShopping } from "../components/Shopping";
 import { AppShell, Message, RedHeader, TabBar } from "../components/ui";
-import { fetchWeek, fetchWeeks, useLoad, useToday } from "../lib/data";
+import { fetchWeek, fetchWeeks, useDataVersion, useLoad, useToday } from "../lib/data";
 import { mondayOf, pickWeek, shoppingDates, startOfToday, toISO, weekTitle } from "../lib/weeks";
 
 const NO_DATES = [];
@@ -10,7 +10,7 @@ async function loadDates() {
   const weeks = await fetchWeeks();
   const today = startOfToday();
   const fromMonday = toISO(mondayOf(today));
-  const ids = weeks.filter((w) => w.id >= fromMonday).map((w) => w.id).sort();
+  const ids = weeks.filter((w) => w.start >= fromMonday).sort((a, b) => a.start.localeCompare(b.start)).map((w) => w.id);
   const loaded = await Promise.all(ids.map(fetchWeek));
   const upcoming = loaded.flatMap(shoppingDates).filter((d) => d.date && toISO(d.date) >= toISO(today));
   if (upcoming.length) return { dates: upcoming, lastPlanned: null };
@@ -22,7 +22,8 @@ async function loadDates() {
 
 export default function Shopping() {
   const today = useToday();
-  const { data, loading, error } = useLoad(loadDates, [today]);
+  const version = useDataVersion();
+  const { data, loading, error } = useLoad(loadDates, [today, version]);
   const shopping = useShopping(data?.dates ?? NO_DATES);
 
   return (

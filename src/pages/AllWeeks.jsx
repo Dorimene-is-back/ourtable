@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { AppShell, Chevron, Message, Photo, RedHeader, TabBar } from "../components/ui";
-import { fetchWeeks, useLoad } from "../lib/data";
+import { fetchWeeks, useDataVersion, useLoad } from "../lib/data";
 import { addDays, dayDate, isoWeekNumber, mainDish, mondayOf, monthName, parseISO, startOfToday, toISO, weekRangeLabel } from "../lib/weeks";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -10,9 +10,9 @@ const gridColumns = { display: "grid", gridTemplateColumns: "repeat(6, minmax(0,
 // as empty rows; a month with nothing planned at all is left out.
 function buildMonths(weeks, today) {
   if (!weeks.length) return [];
-  const byId = new Map(weeks.map((w) => [w.id, w]));
-  const earliest = parseISO(weeks[weeks.length - 1].id);
-  const newestPlanned = parseISO(weeks[0].id);
+  const byId = new Map(weeks.map((w) => [w.start, w]));
+  const earliest = parseISO(weeks[weeks.length - 1].start);
+  const newestPlanned = parseISO(weeks[0].start);
   const thisMonday = mondayOf(today);
   const start = newestPlanned > thisMonday ? newestPlanned : thisMonday;
 
@@ -46,7 +46,7 @@ function Tile({ number, recipe, weekId, label }) {
 function WeekRow({ monday, week, isCurrent }) {
   const tiles = WEEKDAYS.map((weekday, i) => {
     const date = addDays(monday, i);
-    const day = week?.days.find((d) => toISO(dayDate(week.id, d)) === toISO(date));
+    const day = week?.days.find((d) => toISO(dayDate(week.start, d)) === toISO(date));
     return { number: date.getDate(), recipe: day ? mainDish(day) : null, weekId: week?.id, label: `${weekday} ${date.getDate()}` };
   });
   const range = weekRangeLabel(monday);
@@ -73,11 +73,12 @@ function WeekRow({ monday, week, isCurrent }) {
 }
 
 export default function AllWeeks() {
-  const { data: weeks, loading, error } = useLoad(fetchWeeks, []);
+  const version = useDataVersion();
+  const { data: weeks, loading, error } = useLoad(fetchWeeks, [version], { keep: true });
   const today = startOfToday();
   const months = weeks ? buildMonths(weeks, today) : [];
   const thisMonday = toISO(mondayOf(today));
-  const firstMonth = weeks?.length ? monthName(parseISO(weeks[weeks.length - 1].id)) : "";
+  const firstMonth = weeks?.length ? monthName(parseISO(weeks[weeks.length - 1].start)) : "";
 
   return (
     <AppShell withTabBar>

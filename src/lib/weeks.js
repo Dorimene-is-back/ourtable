@@ -1,5 +1,6 @@
 // Date and display rules for weeks, days and recipes.
-// A week's id is the ISO date of its Monday ("2026-11-02").
+// A week's start is the ISO date of its Monday ("2026-11-02"). Its id is that same date for the
+// kitchen the weekly import feeds, and the date plus a suffix for other kitchens: use start for dates.
 
 const DAY_INDEX = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4, Saturday: 5, Sunday: 6 };
 const WEEKDAYS_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -44,7 +45,7 @@ export function weekRangeLabel(monday) {
   return `${monday.getDate()} ${MONTHS_SHORT[monday.getMonth()]}–${sunday.getDate()} ${MONTHS_SHORT[sunday.getMonth()]}`;
 }
 
-export const dayDate = (weekId, day) => addDays(parseISO(weekId), DAY_INDEX[day.day] ?? 0);
+export const dayDate = (weekStart, day) => addDays(parseISO(weekStart), DAY_INDEX[day.day] ?? 0);
 export const dayShort = (day) => day.day.slice(0, 3);
 export const dayNumber = (day) => (day.date || "").split(" ")[0];
 
@@ -100,12 +101,12 @@ export function normalizeWeek(week) {
   const days = [...(week.days || [])]
     .sort((a, b) => (DAY_INDEX[a.day] ?? 0) - (DAY_INDEX[b.day] ?? 0))
     .map((day) => ({ ...day, recipes: sortRecipes(day.recipes || []) }));
-  return { ...week, days };
+  return { ...week, start: week.week_start || week.id, days };
 }
 
 export function findDay(weeks, date) {
-  const week = weeks.find((w) => w.id === toISO(mondayOf(date)));
-  const day = week?.days.find((d) => toISO(dayDate(week.id, d)) === toISO(date));
+  const week = weeks.find((w) => w.start === toISO(mondayOf(date)));
+  const day = week?.days.find((d) => toISO(dayDate(week.start, d)) === toISO(date));
   return day ? { week, day } : null;
 }
 
@@ -114,12 +115,12 @@ export function findDay(weeks, date) {
 export function pickWeek(weeks, today) {
   if (!weeks.length) return null;
   const monday = mondayOf(today);
-  const current = weeks.find((w) => w.id === toISO(monday));
-  const next = weeks.find((w) => w.id === toISO(addDays(monday, 7)));
+  const current = weeks.find((w) => w.start === toISO(monday));
+  const next = weeks.find((w) => w.start === toISO(addDays(monday, 7)));
   const isWeekend = [0, 6].includes(today.getDay());
   if (isWeekend && next && !findDay(weeks, today)) return { week: next, kind: "next" };
   if (current) return { week: current, kind: "this" };
-  const latest = [...weeks].sort((a, b) => b.id.localeCompare(a.id)).find((w) => w.id < toISO(monday));
+  const latest = [...weeks].sort((a, b) => b.start.localeCompare(a.start)).find((w) => w.start < toISO(monday));
   return { week: latest || weeks[0], kind: "latest" };
 }
 
@@ -137,7 +138,7 @@ export function shoppingDates(week) {
       let group = groups.find((g) => g.label === item.day);
       if (!group) {
         const day = week.days.find((d) => item.day.startsWith(dayShort(d)));
-        group = { key: `${week.id}:${item.day}`, label: item.day, date: day ? dayDate(week.id, day) : null, items: [] };
+        group = { key: `${week.id}:${item.day}`, label: item.day, date: day ? dayDate(week.start, day) : null, items: [] };
         groups.push(group);
       }
       group.items.push({ ...item, recipeTitle: titles.get(item.recipe_id) || "" });

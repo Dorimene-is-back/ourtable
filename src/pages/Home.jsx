@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import AuthButton from "../components/AuthButton";
 import DayRows from "../components/DayRows";
 import { AppShell, Logo, Message, Photo, RedHeader, TabBar } from "../components/ui";
-import { fetchWeeks, useLoad } from "../lib/data";
+import { useAuth } from "../lib/auth";
+import { fetchWeeks, useDataVersion, useLoad } from "../lib/data";
 import { findDay, isNoCookingDay, mainDish, pickWeek, shortDate, startOfToday, weekTitle, whoFor } from "../lib/weeks";
 
 const HEADINGS = { this: "This week", next: "Next week", latest: "Last planned" };
@@ -65,7 +66,9 @@ function WeekRows({ picked, today }) {
 }
 
 export default function Home() {
-  const { data: weeks, loading, error } = useLoad(fetchWeeks, []);
+  const version = useDataVersion();
+  const { data: weeks, loading, error } = useLoad(fetchWeeks, [version], { keep: true });
+  const { kitchen } = useAuth();
   const today = startOfToday();
   const picked = weeks && pickWeek(weeks, today);
 
@@ -75,9 +78,16 @@ export default function Home() {
         <Logo />
         <AuthButton />
       </RedHeader>
-      {loading && <Message>Loading…</Message>}
+      {loading && !weeks && <Message>Loading…</Message>}
       {error && <Message>Couldn’t load the plan. Check your connection and try again.</Message>}
-      {weeks && (
+      {weeks && !weeks.length && kitchen && (
+        <section style={{ padding: "24px 20px 0" }}>
+          <h1 style={{ fontWeight: 800, fontSize: 30, lineHeight: 1.05, letterSpacing: -1.2 }}>Plan your first week</h1>
+          <p style={{ margin: "8px 0 16px", fontSize: 17, lineHeight: 1.45, color: "var(--muted)" }}>The {kitchen.name} kitchen has no weeks yet. Open a recipe and tap "Add to a week" to put it on a day.</p>
+          <Link to="/recipes" className="btn-red" style={{ height: 56, borderRadius: 16, background: "var(--tomato)", color: "var(--white)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800 }}>Browse recipes</Link>
+        </section>
+      )}
+      {weeks && weeks.length > 0 && (
         <>
           <Tonight tonight={findDay(weeks, today)} today={today} />
           {picked && <WeekRows picked={picked} today={today} />}

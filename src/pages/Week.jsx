@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import DayRows from "../components/DayRows";
 import { ShoppingBody, ShoppingProgress, useShopping } from "../components/Shopping";
 import { AppShell, BackButton, Message, RedHeader, SmallBowl } from "../components/ui";
-import { fetchWeek, useLoad, useToday } from "../lib/data";
+import { fetchWeek, useDataVersion, useLoad, useToday } from "../lib/data";
 import { shoppingDates, startOfToday, toISO, weekTitle } from "../lib/weeks";
 
 function Segments({ view, onChange }) {
@@ -26,7 +26,8 @@ function Segments({ view, onChange }) {
 export default function Week() {
   const { weekId } = useParams();
   const [params, setParams] = useSearchParams();
-  const { data: week, loading, error } = useLoad(() => fetchWeek(weekId), [weekId]);
+  const version = useDataVersion();
+  const { data: week, loading, error } = useLoad(() => fetchWeek(weekId), [weekId, version]);
   const today = useToday();
   // From today on; a week that's already over shows all its days.
   const dates = useMemo(() => {

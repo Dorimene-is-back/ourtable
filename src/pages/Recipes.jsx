@@ -1,18 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { AppShell, Message, Photo, RedHeader, TabBar } from "../components/ui";
-import { fetchWeeks, useLoad, useToday } from "../lib/data";
+import { Link, useNavigate } from "react-router-dom";
+import { FavoriteButton } from "../components/Reviews";
+import { AppShell, Message, Photo, RedHeader, Sheet, Star, TabBar } from "../components/ui";
+import { useAuth } from "../lib/auth";
+import { fetchLibrary, fetchWeeks, useDataVersion, useLoad, useToday } from "../lib/data";
+import { fetchFavorites, fetchRatings } from "../lib/social";
 import { addDays, dayDate, toISO, whoFor } from "../lib/weeks";
 
 const SALAD = /salad|salade|insalata|panzanella|fattoush|tabbouleh/i;
 
-// Same dish across weeks has different ids, so dishes are matched by title (notes in brackets ignored).
-const dishKey = (title) => title.replace(/\([^)]*\)/g, "").trim().toLowerCase();
+// The same dish has a different recipe id each week it is cooked. Its dish id ties them together;
+// recipes without one are matched by title (notes in brackets ignored).
+const dishKey = (recipe) => recipe.dish_id || recipe.title.replace(/\([^)]*\)/g, "").trim().toLowerCase();
 
-// One entry per dish: how many times it was cooked (days up to today), when last, and the
-// most recent copy to open. Leftover nights and no-cook placeholders are not dishes.
-function buildLibrary(weeks, today) {
+// One entry per dish: how many times it was cooked (days up to today), when last, and the copy to
+// open. Leftover nights and no-cook placeholders are not dishes. Recipes people added themselves
+// (library) appear even before they are cooked, and are the copy that opens.
+function buildLibrary(weeks, library, today) {
   const dishes = new Map();
+  const entry = (recipe) => {
+    const key = dishKey(recipe);
+    if (!dishes.has(key)) dishes.set(key, { key, dishId: recipe.dish_id || null, cooked: 0, planned: 0, last: null, latest: null, own: null, proteins: new Set(), shopped: false });
+    return dishes.get(key);
+  };
   weeks.forEach((week) => {
     // What each recipe's shopping says about its protein.
     const cats = new Map();
@@ -22,18 +32,17 @@ function buildLibrary(weeks, today) {
       cats.get(item.recipe_id).add(item.category);
     });
     week.days.forEach((day) => {
-      const date = toISO(dayDate(week.id, day));
+      const date = toISO(dayDate(week.start, day));
       day.recipes.forEach((recipe) => {
-        if (!recipe.title || !recipe.ingredients?.length || /leftover/i.test(recipe.title)) return;
-        const key = dishKey(recipe.title);
-        if (!dishes.has(key)) dishes.set(key, { key, cooked: 0, planned: 0, last: null, latest: null, proteins: new Set(), shopped: false });
-        const dish = dishes.get(key);
+        if (!recipe.title || !recipe.ingredients?.length) return;
+        const dish = entry(recipe);
         const c = cats.get(recipe.id);
         if (c) {
           dish.shopped = true;
           if (c.has("Fish")) dish.proteins.add("fish");
           if (c.has("Meat")) dish.proteins.add("meat");
         }
+        if (/leftover/i.test(recipe.title)) return;
         if (date <= today) {
           dish.cooked += 1;
           if (!dish.last || date > dish.last) dish.last = date;
@@ -44,27 +53,42 @@ function buildLibrary(weeks, today) {
       });
     });
   });
-  return [...dishes.values()].map((dish) => ({
-    ...dish,
-    // No salad field in the data: salads are recognised by name.
-    course: dish.latest.recipe.type === "dessert" ? "dessert" : SALAD.test(dish.latest.recipe.title) ? "salad" : "main",
-    protein: dish.proteins.has("fish") ? "fish" : dish.proteins.has("meat") ? "meat" : dish.shopped ? "veggie" : null,
-    who: whoFor(dish.latest.recipe).toLowerCase(),
-  }));
+  const inMyWeeks = new Set(weeks.flatMap((week) => week.days.flatMap((day) => day.recipes.map((r) => r.id))));
+  library.forEach((recipe) => {
+    if (!recipe.title || !recipe.ingredients?.length || inMyWeeks.has(recipe.id) || /leftover/i.test(recipe.title)) return;
+    const dish = entry(recipe);
+    if (!recipe.day_id) dish.own = recipe;
+    // Another kitchen's public recipe: keep its most recent copy.
+    else if (!dish.shared || (recipe.days?.week_id || "") > (dish.shared.days?.week_id || "")) dish.shared = recipe;
+  });
+  return [...dishes.values()].filter((dish) => dish.latest || dish.own || dish.shared).map((dish) => {
+    const recipe = dish.own || dish.latest?.recipe || dish.shared;
+    return {
+      ...dish,
+      recipe,
+      to: dish.latest && !dish.own ? `/weeks/${dish.latest.weekId}/${recipe.id}` : `/recipes/${recipe.id}`,
+      // No salad field in the data: salads are recognised by name.
+      course: recipe.type === "dessert" ? "dessert" : SALAD.test(recipe.title) ? "salad" : "main",
+      protein: dish.proteins.has("fish") ? "fish" : dish.proteins.has("meat") ? "meat" : dish.shopped ? "veggie" : null,
+      who: whoFor(recipe).toLowerCase(),
+    };
+  });
 }
 
 const SORTS = [
   ["recent", "Recently cooked"],
   ["longest", "Least recently cooked"],
   ["cooked", "Most cooked"],
+  ["rated", "Top rated"],
   ["name", "A–Z"],
 ];
 
 function sortDishes(dishes, sort) {
-  const byName = (a, b) => a.latest.recipe.title.localeCompare(b.latest.recipe.title);
+  const byName = (a, b) => a.recipe.title.localeCompare(b.recipe.title);
   const lastOrEnd = (d, end) => d.last || end;
   if (sort === "name") return [...dishes].sort(byName);
   if (sort === "recent") return [...dishes].sort((a, b) => lastOrEnd(b, "").localeCompare(lastOrEnd(a, "")) || byName(a, b));
+  if (sort === "rated") return [...dishes].sort((a, b) => (b.rating?.rating || 0) - (a.rating?.rating || 0) || (b.rating?.ratings || 0) - (a.rating?.ratings || 0) || byName(a, b));
   if (sort === "longest") return [...dishes].sort((a, b) => lastOrEnd(a, "9999").localeCompare(lastOrEnd(b, "9999")) || byName(a, b));
   return [...dishes].sort((a, b) => b.cooked - a.cooked || lastOrEnd(b, "").localeCompare(lastOrEnd(a, "")) || byName(a, b));
 }
@@ -72,6 +96,7 @@ function sortDishes(dishes, sort) {
 // Filter groups. Options within a group widen the results (or); groups narrow them (and).
 // "Due again" follows the household rotation rule: not cooked in the last 6 weeks.
 const FILTERS = [
+  { id: "mine", title: "Yours", options: [["saved", "Favourites"], ["loved", "Rated 4 stars or more"], ["photos", "With your photos"]], test: (d, v) => (v === "saved" ? d.saved : v === "loved" ? (d.rating?.rating || 0) >= 4 : (d.rating?.photos || 0) > 0) },
   { id: "course", title: "Type", options: [["main", "Main meal"], ["salad", "Salad"], ["dessert", "Dessert"]], test: (d, v) => d.course === v },
   { id: "who", title: "Who it's for", options: [["kids", "Kids"], ["adult", "Adult"], ["all", "Everyone"]], test: (d, v) => d.who === v },
   { id: "protein", title: "Protein", options: [["fish", "Fish"], ["meat", "Meat"], ["veggie", "Veggie"]], test: (d, v) => d.protein === v },
@@ -85,31 +110,6 @@ const optionLabel = (group, value) => FILTERS.find((f) => f.id === group).option
 
 function applyFilters(dishes, picked, sixWeeksAgo) {
   return dishes.filter((d) => FILTERS.every((f) => !picked[f.id]?.size || [...picked[f.id]].some((v) => f.test(d, v, sixWeeksAgo))));
-}
-
-// Bottom sheet, as on shopping sites: slides over the page, tap outside to close.
-function Sheet({ title, onClose, children, footer }) {
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = overflow; };
-  }, [onClose]);
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 30, background: "rgba(26,15,12,0.4)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 500, maxHeight: "85dvh", display: "flex", flexDirection: "column", background: "var(--white)", borderRadius: "24px 24px 0 0", paddingBottom: "var(--safe-bottom)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px 8px" }}>
-          <h2 style={{ fontWeight: 800, fontSize: 22, letterSpacing: -0.8 }}>{title}</h2>
-          <button onClick={onClose} aria-label="Close" style={{ width: 44, height: 44, border: "none", borderRadius: 999, background: "var(--chip)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
-        </div>
-        <div style={{ overflowY: "auto", padding: "0 20px 12px" }}>{children}</div>
-        {footer && <div style={{ padding: "12px 20px 16px", borderTop: "2px solid var(--line)" }}>{footer}</div>}
-      </div>
-    </div>
-  );
 }
 
 const chipStyle = (on) => ({ minHeight: 40, padding: "6px 14px", borderRadius: 999, border: "2px solid", borderColor: on ? "var(--ink)" : "var(--line)", background: on ? "var(--ink)" : "var(--white)", color: on ? "var(--white)" : "var(--ink)", fontSize: 15, fontWeight: 600 });
@@ -130,35 +130,42 @@ const dark = { ...badge, background: "rgba(26,15,12,0.72)", color: "var(--white)
 
 const cookedLabel = (n) => (n === 0 ? "Not cooked yet" : n === 1 ? "Cooked once" : n === 2 ? "Cooked twice" : `Cooked ${n} times`);
 
-function DishCard({ dish }) {
-  const { recipe, weekId } = dish.latest;
+function DishCard({ dish, onSaved }) {
+  const { recipe } = dish;
   return (
-    <Link to={`/weeks/${weekId}/${recipe.id}`} style={{ display: "block", marginBottom: 14 }}>
+    <Link to={dish.to} style={{ display: "block", marginBottom: 14 }}>
       <div style={{ position: "relative", aspectRatio: `1 / ${shapeOf(dish.key)}`, borderRadius: 16, overflow: "hidden", background: "var(--line)" }}>
         <Photo src={recipe.image} style={{ position: "absolute", inset: 0 }} />
         {dish.cooked !== 1 && <span style={{ ...light, top: 8, left: 8 }}>{cookedLabel(dish.cooked)}</span>}
         {dish.last
           ? <span style={{ ...dark, bottom: 8, left: 8 }}>Last cooked {lastLabel(dish.last)}</span>
           : dish.planned > 0 && <span style={{ ...dark, bottom: 8, left: 8 }}>Coming up</span>}
+        {dish.dishId && <FavoriteButton dishId={dish.dishId} saved={dish.saved} onChange={(on) => onSaved(dish.dishId, on)} style={{ position: "absolute", top: 4, right: 4, background: dish.saved ? "var(--white)" : "rgba(255,255,255,0.92)" }} />}
       </div>
       <p style={{ marginTop: 6, fontSize: 15, fontWeight: 700, lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{recipe.title}</p>
+      {dish.rating?.ratings > 0 && (
+        <p style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>
+          <Star size={13} />
+          {dish.rating.rating}{dish.rating.ratings > 1 ? ` · ${dish.rating.ratings} ratings` : ""}
+        </p>
+      )}
     </Link>
   );
 }
 
 // Two columns, each card going to the shorter one so the grid stays balanced.
-function Masonry({ dishes }) {
+function Masonry({ dishes, onSaved }) {
   const cols = [[], []];
   const heights = [0, 0];
   dishes.forEach((dish) => {
     const i = heights[0] <= heights[1] ? 0 : 1;
     cols[i].push(dish);
-    heights[i] += shapeOf(dish.key) + 0.35; // + title
+    heights[i] += shapeOf(dish.key) + (dish.rating?.ratings ? 0.47 : 0.35); // + title and rating line
   });
   return (
     <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
       {cols.map((col, i) => (
-        <div key={i} style={{ flex: 1, minWidth: 0 }}>{col.map((dish) => <DishCard key={dish.key} dish={dish} />)}</div>
+        <div key={i} style={{ flex: 1, minWidth: 0 }}>{col.map((dish) => <DishCard key={dish.key} dish={dish} onSaved={onSaved} />)}</div>
       ))}
     </div>
   );
@@ -182,7 +189,19 @@ function useEndless(list) {
 
 export default function Recipes() {
   const today = useToday();
-  const { data: weeks, loading, error } = useLoad(fetchWeeks, []);
+  const version = useDataVersion();
+  const { user, ready, requireUser } = useAuth();
+  const navigate = useNavigate();
+  const { data, loading, error } = useLoad(
+    () => Promise.all([fetchWeeks(), fetchLibrary(), fetchRatings().catch(() => new Map()), fetchFavorites(user?.id).catch(() => new Set())])
+      .then(([weeks, own, ratings, favorites]) => ({ weeks, own, ratings, favorites })),
+    [version, user?.id, ready],
+    { keep: true }
+  );
+  const weeks = data?.weeks;
+  // Hearts tapped on this screen, on top of what was loaded.
+  const [savedEdits, setSavedEdits] = useState({});
+  const onSaved = (dishId, on) => setSavedEdits((prev) => ({ ...prev, [dishId]: on }));
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("recent");
   const [picked, setPicked] = useState({});
@@ -190,10 +209,17 @@ export default function Recipes() {
   const [sortOpen, setSortOpen] = useState(false);
 
   const sixWeeksAgo = useMemo(() => { const [y, m, d] = today.split("-").map(Number); return toISO(addDays(new Date(y, m - 1, d), -42)); }, [today]);
-  const library = useMemo(() => (weeks ? buildLibrary(weeks, today) : []), [weeks, today]);
+  const library = useMemo(() => {
+    if (!data) return [];
+    return buildLibrary(data.weeks, data.own, today).map((dish) => ({
+      ...dish,
+      rating: data.ratings.get(dish.dishId) || null,
+      saved: savedEdits[dish.dishId] ?? data.favorites.has(dish.dishId),
+    }));
+  }, [data, today, savedEdits]);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const searched = q ? library.filter((d) => d.latest.recipe.title.toLowerCase().includes(q)) : library;
+    const searched = q ? library.filter((d) => d.recipe.title.toLowerCase().includes(q)) : library;
     return sortDishes(applyFilters(searched, picked, sixWeeksAgo), sort);
   }, [library, query, sort, picked, sixWeeksAgo]);
   const draftCount = useMemo(() => (draft ? applyFilters(library, draft, sixWeeksAgo).length : 0), [library, draft, sixWeeksAgo]);
@@ -205,9 +231,12 @@ export default function Recipes() {
   return (
     <AppShell withTabBar>
       <RedHeader>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
           <h1 style={{ fontWeight: 800, fontSize: 32, lineHeight: 1.1, letterSpacing: -1.4 }}>Recipes</h1>
-          {weeks && <span style={{ fontSize: 15, fontWeight: 600 }}>{shown.length === library.length ? `${library.length} dishes` : `${shown.length} of ${library.length}`}</span>}
+          <span style={{ flex: 1, textAlign: "right", fontSize: 15, fontWeight: 600 }}>{weeks && (shown.length === library.length ? `${library.length} dishes` : `${shown.length} of ${library.length}`)}</span>
+          <button onClick={() => requireUser("Sign in to add your own recipes.") && navigate("/recipes/new")} aria-label="Add a recipe" style={{ alignSelf: "center", width: 44, height: 44, borderRadius: 999, border: "none", background: "var(--white)", color: "var(--tomato)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
         </div>
       </RedHeader>
 
@@ -243,12 +272,12 @@ export default function Recipes() {
         )}
       </div>
 
-      {loading && <Message>Loading…</Message>}
+      {loading && !data && <Message>Loading…</Message>}
       {error && <Message>Couldn’t load your recipes.</Message>}
       {weeks && !shown.length && <Message>{query ? "No dish matches that." : "No recipes yet."}</Message>}
 
       <main style={{ padding: "14px 16px 0" }}>
-        <Masonry dishes={visible} />
+        <Masonry dishes={visible} onSaved={onSaved} />
         <div ref={sentinel} style={{ height: 1 }} />
       </main>
       {draft && (
