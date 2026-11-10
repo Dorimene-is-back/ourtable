@@ -1,0 +1,32 @@
+:root {
+  --tomato: #D72C16;
+  --tomato-dark: #A8200E;
+  --tomato-tint: #FBE4DF;
+  --ink: #1A0F0C;
+  --muted: #6B5F5C;
+  --line: #EEE9E8;
+  --chip: #F4F1F0;
+  --white: #FFFFFF;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--white);
+  color: var(--ink);
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3, p, ol { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.on-red :focus-visible { outline-color: var(--white); }
+
+.btn-red:hover, .btn-red:active { background: var(--tomato-dark); border-color: var(--tomato-dark); }
