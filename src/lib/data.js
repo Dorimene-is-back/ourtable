@@ -64,3 +64,27 @@ export function useLoad(load, deps) {
   }, deps);
   return state;
 }
+
+// Today's date (ISO). Updates when the app comes back into view on a new day, or at midnight,
+// so lists that hide past days don't go stale in an app left open in the background.
+export function useToday() {
+  const iso = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const [today, setToday] = useState(iso);
+  useEffect(() => {
+    const check = () => setToday(iso());
+    const now = new Date();
+    const msToMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1) - now + 1000;
+    const timer = setTimeout(check, msToMidnight);
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("focus", check);
+    };
+  }, [today]);
+  return today;
+}

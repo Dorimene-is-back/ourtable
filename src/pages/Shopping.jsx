@@ -1,6 +1,6 @@
 import { DatePicker, ShoppingBody, ShoppingProgress, useShopping } from "../components/Shopping";
 import { AppShell, Message, RedHeader, TabBar } from "../components/ui";
-import { fetchWeek, fetchWeeks, useLoad } from "../lib/data";
+import { fetchWeek, fetchWeeks, useLoad, useToday } from "../lib/data";
 import { mondayOf, pickWeek, shoppingDates, startOfToday, toISO, weekTitle } from "../lib/weeks";
 
 const NO_DATES = [];
@@ -21,7 +21,8 @@ async function loadDates() {
 }
 
 export default function Shopping() {
-  const { data, loading, error } = useLoad(loadDates, []);
+  const today = useToday();
+  const { data, loading, error } = useLoad(loadDates, [today]);
   const shopping = useShopping(data?.dates ?? NO_DATES);
 
   return (

@@ -3,8 +3,8 @@ import { useParams, useSearchParams } from "react-router-dom";
 import DayRows from "../components/DayRows";
 import { ShoppingBody, ShoppingProgress, useShopping } from "../components/Shopping";
 import { AppShell, BackButton, Message, RedHeader, SmallBowl } from "../components/ui";
-import { fetchWeek, useLoad } from "../lib/data";
-import { shoppingDates, startOfToday, weekTitle } from "../lib/weeks";
+import { fetchWeek, useLoad, useToday } from "../lib/data";
+import { shoppingDates, startOfToday, toISO, weekTitle } from "../lib/weeks";
 
 function Segments({ view, onChange }) {
   const tab = (id, label) => {
@@ -27,7 +27,14 @@ export default function Week() {
   const { weekId } = useParams();
   const [params, setParams] = useSearchParams();
   const { data: week, loading, error } = useLoad(() => fetchWeek(weekId), [weekId]);
-  const dates = useMemo(() => (week ? shoppingDates(week) : []), [week]);
+  const today = useToday();
+  // From today on; a week that's already over shows all its days.
+  const dates = useMemo(() => {
+    if (!week) return [];
+    const all = shoppingDates(week);
+    const upcoming = all.filter((d) => !d.date || toISO(d.date) >= today);
+    return upcoming.length ? upcoming : all;
+  }, [week, today]);
   const shopping = useShopping(dates);
   const view = params.get("view") === "shopping" ? "shopping" : "plan";
   const setView = (next) => setParams(next === "shopping" ? { view: next } : {}, { replace: true });
