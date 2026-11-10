@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuth } from '../lib/useAuth'
+import { useAuth } from '../lib/auth'
 
 const ACCENT = 'var(--tomato)'
 const BORDER = 'var(--line)'
@@ -13,7 +13,7 @@ const GoogleIcon = () => (
   </svg>
 )
 
-export default function AuthModal({ onClose }) {
+export default function AuthModal({ onClose, reason }) {
   const { signInWithGoogle, signInWithMagicLink } = useAuth()
   const [email, setEmail] = useState('')
   const [sending, setSending] = useState(false)
@@ -69,9 +69,10 @@ export default function AuthModal({ onClose }) {
         <p style={{ margin: '0 0 4px', fontSize: 15, color: ACCENT, fontWeight: 800 }}>
           tambouille
         </p>
-        <h2 style={{ margin: '0 0 24px', fontSize: 30, fontWeight: 800, color: 'var(--ink)', letterSpacing: -1 }}>
+        <h2 style={{ margin: reason ? '0 0 8px' : '0 0 24px', fontSize: 30, fontWeight: 800, color: 'var(--ink)', letterSpacing: -1 }}>
           Sign in
         </h2>
+        {reason && <p style={{ margin: '0 0 20px', fontSize: 16, lineHeight: 1.4, color: 'var(--muted)' }}>{reason}</p>}
 
         {sent ? (
           <div style={{ textAlign: 'center', padding: '16px 0 8px' }}>

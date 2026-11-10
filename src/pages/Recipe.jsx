@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
-import { AppShell, BackButton, Chevron, Message, Photo } from "../components/ui";
-import { fetchWeek, useLoad } from "../lib/data";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { AddToWeekSheet, FavoriteButton, Finished, ReviewList, useDish } from "../components/Reviews";
+import { AppShell, BackButton, Chevron, Message, Photo, Stars, outlineButton, textButton } from "../components/ui";
+import { useAuth } from "../lib/auth";
+import { fetchRecipe, fetchWeek, refreshData, useDataVersion, useLoad } from "../lib/data";
+import { deleteRecipe } from "../lib/social";
 import { formatRemaining, useTimers } from "../lib/useTimers";
 import { useWakeLock } from "../lib/useWakeLock";
-import { dayDate, servingLabel, shortDate } from "../lib/weeks";
+import { dayDate, servingLabel, shortDate, startOfToday, toISO } from "../lib/weeks";
 
 const isHeader = (row) => row.value.startsWith("—");
 const headerText = (row) => row.value.replace(/^[—\s]+|[—\s]+$/g, "");
@@ -95,21 +98,55 @@ function RunningPill({ timers }) {
   );
 }
 
+// week and day are missing for a library recipe, one that isn't on a calendar yet.
 function RecipeView({ week, day, recipe }) {
   const timers = useTimers(recipe.id, recipe.title);
   const wakeLock = useWakeLock();
+  const navigate = useNavigate();
+  const { user, kitchenId, requireUser } = useAuth();
+  const dish = useDish(recipe.dish_id);
+  const [adding, setAdding] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  const date = week ? dayDate(week.start, day) : null;
+  const today = startOfToday();
+  // A review made from a past or current night belongs to that night; otherwise to today.
+  const cookedOn = toISO(date && date <= today ? date : today);
+  const inMyWeek = !!week && !!kitchenId && week.kitchen_id === kitchenId;
+  const mine = !week && !!user && recipe.created_by === user.id;
+  const ratingCount = dish.rating?.ratings || 0;
+
+  const remove = async () => {
+    if (!window.confirm(week ? `Take ${recipe.title} off this week?` : `Delete ${recipe.title}?`)) return;
+    setRemoving(true);
+    try {
+      await deleteRecipe(recipe.id);
+      refreshData();
+      navigate(week ? "/" : "/recipes", { replace: true });
+    } catch (err) {
+      window.alert(err.message);
+      setRemoving(false);
+    }
+  };
 
   return (
     <AppShell>
       <RunningPill timers={timers} />
       <div style={{ height: 200, position: "relative" }}>
         <Photo src={recipe.image} height={200} placeholder="var(--ink)" />
-        <BackButton fallback={`/weeks/${week.id}`} label="Back" style={{ position: "absolute", top: "calc(var(--safe-top) + 12px)", left: 20 }} />
+        <BackButton fallback={week ? `/weeks/${week.id}` : "/recipes"} label="Back" style={{ position: "absolute", top: "calc(var(--safe-top) + 12px)", left: 20 }} />
+        {recipe.dish_id && <FavoriteButton dishId={recipe.dish_id} saved={dish.saved} onChange={dish.setSaved} style={{ position: "absolute", top: "calc(var(--safe-top) + 12px)", right: 20 }} />}
       </div>
 
       <div style={{ background: "var(--tomato)", color: "var(--white)", padding: "14px 20px 16px" }}>
-        <p style={{ fontSize: 14, fontWeight: 600 }}>{day.day} {shortDate(dayDate(week.id, day)).split(" ").slice(1).join(" ")} · {servingLabel(recipe)}</p>
+        <p style={{ fontSize: 14, fontWeight: 600 }}>{day ? `${day.day} ${shortDate(date).split(" ").slice(1).join(" ")} · ` : ""}{servingLabel(recipe)}</p>
         <h1 style={{ marginTop: 2, fontWeight: 800, fontSize: 30, lineHeight: 1.05, letterSpacing: -1.2 }}>{recipe.title}</h1>
+        {ratingCount > 0 && (
+          <a href="#reviews" style={{ marginTop: 8, minHeight: 28, display: "inline-flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600 }}>
+            <Stars value={dish.rating.rating} size={16} />
+            {dish.rating.rating} · {ratingCount} {ratingCount === 1 ? "rating" : "ratings"}
+          </a>
+        )}
       </div>
 
       <article style={{ padding: "14px 20px 0" }}>
@@ -132,23 +169,53 @@ function RecipeView({ week, day, recipe }) {
             Original recipe{recipe.ref ? ` · ${recipe.ref.replace(/^Adapted from\s+/i, "")}` : ""}<Chevron size={14} />
           </a>
         )}
+
+        {recipe.dish_id && recipe.ingredients.length > 0 && <Finished recipe={recipe} cookedOn={cookedOn} onSaved={dish.reload} />}
+
+        {recipe.dish_id && recipe.ingredients.length > 0 && (
+          <div style={{ display: "grid", gridTemplateColumns: mine ? "1fr 1fr" : "1fr", gap: 10, marginTop: 14 }}>
+            <button onClick={() => requireUser("Sign in to plan your own weeks.") && setAdding(true)} style={outlineButton}>Add to a week</button>
+            {mine && <Link to={`/recipes/${recipe.id}/edit`} style={outlineButton}>Edit</Link>}
+          </div>
+        )}
+
+        {dish.reviews.length > 0 && (
+          <section id="reviews" style={{ marginTop: 26, scrollMarginTop: 20 }}>
+            <h2 style={{ fontWeight: 800, fontSize: 22, letterSpacing: -0.8 }}>Reviews</h2>
+            <ReviewList reviews={dish.reviews} onChanged={dish.reload} />
+          </section>
+        )}
+
+        {(inMyWeek || mine) && (
+          <button onClick={remove} disabled={removing} style={{ ...textButton, marginTop: 14, color: "var(--muted)" }}>
+            {removing ? "Removing…" : week ? "Take off this week" : "Delete this recipe"}
+          </button>
+        )}
       </article>
+      {adding && <AddToWeekSheet recipe={recipe} onClose={() => setAdding(false)} />}
     </AppShell>
   );
 }
 
 export default function Recipe() {
   const { weekId, recipeId } = useParams();
-  const { data: week, loading, error } = useLoad(() => fetchWeek(weekId), [weekId]);
+  const version = useDataVersion();
+  // A recipe opened from a week comes with its week; one opened from the library stands alone.
+  const { data, loading, error } = useLoad(
+    () => (weekId ? fetchWeek(weekId).then((week) => ({ week })) : fetchRecipe(recipeId).then((recipe) => ({ recipe }))),
+    [weekId, recipeId, version],
+    { keep: true }
+  );
+  const week = data?.week;
   const day = week?.days.find((d) => d.recipes.some((r) => r.id === recipeId));
-  const recipe = day?.recipes.find((r) => r.id === recipeId);
+  const recipe = week ? day?.recipes.find((r) => r.id === recipeId) : data?.recipe;
 
   if (recipe) return <RecipeView key={recipe.id} week={week} day={day} recipe={recipe} />;
   return (
     <AppShell>
       {loading && <Message>Loading…</Message>}
       {error && <Message>Couldn’t load this recipe.</Message>}
-      {week && !recipe && <Message>This recipe isn’t in that week.</Message>}
+      {data && !recipe && !loading && <Message>{weekId ? "This recipe isn’t in that week." : "This recipe isn’t available."}</Message>}
     </AppShell>
   );
 }

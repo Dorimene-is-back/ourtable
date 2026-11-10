@@ -15,7 +15,7 @@ function DishRow({ weekId, recipe }) {
 // A week as compact day rows, one tappable row per dish. dimPast greys out days already gone.
 export default function DayRows({ week, today, dimPast = false }) {
   return week.days.map((day) => {
-    const date = toISO(dayDate(week.id, day));
+    const date = toISO(dayDate(week.start, day));
     const isToday = date === toISO(today);
     const dimmed = dimPast && date < toISO(today);
     return (
