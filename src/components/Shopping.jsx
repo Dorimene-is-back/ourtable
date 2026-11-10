@@ -164,7 +164,7 @@ export function useShopping(dates) {
 export function ShoppingProgress({ done, total, style }) {
   const pct = total ? Math.round((done / total) * 100) : 0;
   return (
-    <div role="progressbar" aria-label="Items in the basket" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} style={{ flex: 1, height: 6, borderRadius: 999, background: "rgba(255,255,255,0.35)", overflow: "hidden", ...style }}>
+    <div role="progressbar" aria-label="Items ticked off" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} style={{ flex: 1, height: 6, borderRadius: 999, background: "rgba(255,255,255,0.35)", overflow: "hidden", ...style }}>
       <div style={{ width: `${pct}%`, height: 6, borderRadius: 999, background: "var(--white)" }} />
     </div>
   );
@@ -313,7 +313,7 @@ export function ShoppingBody({ shopping }) {
           })()}
 
           <GroupToggle value={groupBy} onChange={setGroupBy} />
-          {toBuyCount === 0 && <p style={{ paddingTop: 14, fontSize: 16, color: "var(--muted)" }}>All in the basket.</p>}
+          {toBuyCount === 0 && <p style={{ paddingTop: 14, fontSize: 16, color: "var(--muted)" }}>All ticked off.</p>}
           {groups.map((group) => (
             <section key={group.key} style={{ paddingTop: 14 }}>
               <h3 style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.3 }}>{group.title}</h3>
