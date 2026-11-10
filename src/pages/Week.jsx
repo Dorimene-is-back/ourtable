@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import DayRows from "../components/DayRows";
 import { ShoppingBody, ShoppingProgress, useShopping } from "../components/Shopping";
 import { AppShell, BackButton, Message, RedHeader, SmallBowl } from "../components/ui";
 import { fetchWeek, useLoad } from "../lib/data";
-import { shoppingDates, startOfToday, weekTitle } from "../lib/weeks";
+import { dayNumber, dayShort, shoppingDates, startOfToday, weekTitle } from "../lib/weeks";
 
 function Segments({ view, onChange }) {
   const tab = (id, label) => {
@@ -31,6 +31,32 @@ export default function Week() {
   const shopping = useShopping(dates);
   const view = params.get("view") === "shopping" ? "shopping" : "plan";
   const setView = (next) => setParams(next === "shopping" ? { view: next } : {}, { replace: true });
+  const dayKey = params.get("day");
+  const day = dayKey && week?.days.find((d) => dayShort(d).toLowerCase() === dayKey);
+
+  // ?day=tue: just that day, opened from the All weeks calendar.
+  if (dayKey && (day || loading)) {
+    return (
+      <AppShell>
+        <RedHeader>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <BackButton fallback="/weeks" label="Back" />
+            <h1 style={{ flex: 1, fontWeight: 800, fontSize: 30, lineHeight: 1, letterSpacing: -1.2 }}>{day ? `${day.day} ${dayNumber(day)}` : ""}</h1>
+            <SmallBowl />
+          </div>
+        </RedHeader>
+        {loading && <Message>Loading…</Message>}
+        {day && (
+          <main style={{ padding: "4px 20px 0" }}>
+            <DayRows week={{ ...week, days: [day] }} today={startOfToday()} />
+            <Link to={`/weeks/${week.id}`} replace style={{ display: "inline-flex", alignItems: "center", minHeight: 44, marginTop: 8, fontSize: 15, fontWeight: 600, textDecoration: "underline" }}>
+              See the full week, {weekTitle(week)}
+            </Link>
+          </main>
+        )}
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
