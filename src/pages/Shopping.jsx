@@ -1,4 +1,4 @@
-import { ShoppingBody, ShoppingProgress, useShopping } from "../components/Shopping";
+import { DatePicker, ShoppingBody, ShoppingProgress, useShopping } from "../components/Shopping";
 import { AppShell, Message, RedHeader, TabBar } from "../components/ui";
 import { fetchWeek, fetchWeeks, useLoad } from "../lib/data";
 import { mondayOf, pickWeek, shoppingDates, startOfToday, toISO, weekTitle } from "../lib/weeks";
@@ -26,17 +26,21 @@ export default function Shopping() {
 
   return (
     <AppShell withTabBar>
-      <RedHeader style={{ position: "sticky", top: 0, zIndex: 5, padding: "calc(var(--safe-top) + 10px) 20px 10px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <h1 style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.1, letterSpacing: -0.8 }}>Shopping</h1>
-          {data && <ShoppingProgress done={shopping.done.length} total={shopping.total} />}
-          {data && <span style={{ fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{shopping.done.length} / {shopping.total}</span>}
+      {/* Header and day picker stick together so the chosen days stay in view. */}
+      <div style={{ position: "sticky", top: 0, zIndex: 5 }}>
+        <RedHeader style={{ padding: "calc(var(--safe-top) + 10px) 20px 10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <h1 style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.1, letterSpacing: -0.8 }}>Shopping</h1>
+            {data && <ShoppingProgress done={shopping.done.length} total={shopping.total} />}
+            {data && <span style={{ fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{shopping.done.length} / {shopping.total}</span>}
         </div>
         {data?.lastPlanned && <p style={{ marginTop: 2, fontSize: 14, fontWeight: 600 }}>Last planned: {data.lastPlanned}</p>}
       </RedHeader>
+      {data?.dates.length > 0 && <DatePicker shopping={shopping} />}
+      </div>
       {loading && <Message>Loading…</Message>}
       {error && <Message>Couldn’t load the list. Check your connection and try again.</Message>}
-      {data && <ShoppingBody shopping={shopping} />}
+      {data && <ShoppingBody shopping={shopping} pickerInHeader />}
       <TabBar hideOnScroll />
     </AppShell>
   );

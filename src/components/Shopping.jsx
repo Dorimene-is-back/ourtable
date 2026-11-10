@@ -186,7 +186,8 @@ function ItemRow({ row, onTick }) {
 }
 
 // "Shop until": tap the last day you're buying for; every day up to it is included.
-function DatePicker({ shopping }) {
+// Pages with a sticky header render it inside that header; otherwise ShoppingBody pins it to the top.
+export function DatePicker({ shopping, sticky = false }) {
   const { dates, lastIndex, setUntil } = shopping;
   const first = dates[0];
   const last = dates[lastIndex];
@@ -195,7 +196,7 @@ function DatePicker({ shopping }) {
   const range = first === last ? first.label : `${first.label} → ${last.label}`;
 
   return (
-    <div style={{ padding: "12px 20px 14px", borderBottom: "2px solid var(--line)" }}>
+    <div style={{ padding: "12px 20px 14px", borderBottom: "2px solid var(--line)", background: "var(--white)", ...(sticky && { position: "sticky", top: 0, zIndex: 4 }) }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
         <p style={{ fontSize: 15, lineHeight: 1.3 }}>
           <span style={{ fontWeight: 800 }}>Shopping for {range}</span>
@@ -255,7 +256,7 @@ function GroupToggle({ value, onChange }) {
   );
 }
 
-export function ShoppingBody({ shopping }) {
+export function ShoppingBody({ shopping, pickerInHeader = false }) {
   const [pantryOpen, setPantryOpen] = useState(true);
   const { dates, total, pantry, toggleHave, setAllHave, toBuyCount, groups, groupBy, setGroupBy, tickAll } = shopping;
 
@@ -263,7 +264,7 @@ export function ShoppingBody({ shopping }) {
 
   return (
     <>
-      <DatePicker shopping={shopping} />
+      {!pickerInHeader && <DatePicker shopping={shopping} sticky />}
       {(
         <main style={{ padding: "12px 20px 0" }}>
           {pantry.length > 0 && (() => {
