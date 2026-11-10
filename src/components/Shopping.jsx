@@ -3,6 +3,7 @@ import { SHOPPING_TYPES } from "../lib/weeks";
 
 const TICKS_KEY = "tambouille:shopping:ticked";
 const GROUP_KEY = "tambouille:shopping:groupBy";
+const PANTRY_KEY = "tambouille:shopping:have";
 
 function read(key, fallback) {
   try {
@@ -33,6 +34,32 @@ function mergeByName(list) {
   return [...map.values()];
 }
 
+// Pantry lines arrive as "2 garlic cloves" or "Balsamic vinegar, Dijon mustard, honey (vinaigrette)".
+// A pantry check only needs the ingredient: drop quantities and notes, split lists.
+const QTY = /^[\d½¼¾⅓⅔.,/\s-]+\s*(g|kg|ml|l|tsp|tbsp|cups?|pinch|handful|cloves?)?\b\s*/i;
+function pantryNames(line) {
+  return line
+    .replace(/\([^)]*\)/g, "")
+    .split(/,|\band\b/)
+    .map((part) => part.trim().replace(QTY, "").trim())
+    .filter(Boolean)
+    .map((name) => name[0].toUpperCase() + name.slice(1));
+}
+
+// One chip per ingredient name. Each chip remembers the item rows it covers, so ticks
+// belong to this week's rows and start fresh next week.
+function pantryChips(items) {
+  const map = new Map();
+  items.forEach((item) => {
+    pantryNames(item.item).forEach((name) => {
+      const key = name.toLowerCase();
+      if (!map.has(key)) map.set(key, { key, name, marks: [] });
+      map.get(key).marks.push(`${item.id}:${key}`);
+    });
+  });
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 const toggled = (set, value) => {
   const next = new Set(set);
   if (!next.delete(value)) next.add(value);
@@ -44,6 +71,7 @@ const toggled = (set, value) => {
 export function useShopping(dates) {
   const [ticked, setTicked] = useState(() => new Set(read(TICKS_KEY, [])));
   const [until, setUntil] = useState(null);
+  const [have, setHave] = useState(() => new Set(read(PANTRY_KEY, [])));
   // "type" was the old name for the aisle view.
   const [groupBy, setGroupByState] = useState(() => (read(GROUP_KEY, "date") === "date" ? "date" : "aisle"));
 
@@ -68,9 +96,15 @@ export function useShopping(dates) {
     write(TICKS_KEY, [...next]);
   };
 
-  // Pantry checks, one per ingredient name however many recipes need it.
-  const pantryItems = pending.filter((item) => item.category === "Pantry");
-  const pantry = mergeByName(pantryItems);
+  // Pantry checks toggle in place: a mistaken tap is undone by tapping again.
+  const pantry = pantryChips(items.filter((item) => item.category === "Pantry"))
+    .map((chip) => ({ ...chip, have: chip.marks.every((m) => have.has(m)) }));
+  const toggleHave = (chip) => {
+    const next = new Set(have);
+    chip.marks.forEach((m) => (chip.have ? next.delete(m) : next.add(m)));
+    setHave(next);
+    write(PANTRY_KEY, [...next]);
+  };
 
   const setGroupBy = (value) => {
     setGroupByState(value);
@@ -101,9 +135,11 @@ export function useShopping(dates) {
     dates,
     lastIndex,
     setUntil: (key) => setUntil(key === dates[dates.length - 1]?.key ? null : key),
-    total: items.length,
-    done: items.filter((item) => ticked.has(item.id)),
+    total: items.filter((item) => item.category !== "Pantry").length,
+    done: items.filter((item) => item.category !== "Pantry" && ticked.has(item.id)),
     pantry,
+    toggleHave,
+    toBuyCount: toBuy.length,
     tickAll,
     groups,
     groupBy,
@@ -208,8 +244,8 @@ function GroupToggle({ value, onChange }) {
 
 export function ShoppingBody({ shopping }) {
   const [pantryOpen, setPantryOpen] = useState(true);
-  const [basketOpen, setBasketOpen] = useState(false);
-  const { dates, total, done, pantry, groups, groupBy, setGroupBy, toggle, tickAll } = shopping;
+  const [list, setList] = useState("buy");
+  const { dates, total, done, pantry, toggleHave, toBuyCount, groups, groupBy, setGroupBy, toggle, tickAll } = shopping;
 
   if (!dates.length) return <p style={{ padding: "24px 20px", fontSize: 16, color: "var(--muted)" }}>No shopping list for these dates.</p>;
 
@@ -218,59 +254,89 @@ export function ShoppingBody({ shopping }) {
       <DatePicker shopping={shopping} />
       {(
         <main style={{ padding: "12px 20px 0" }}>
-          {pantry.length > 0 && (
-            <section style={{ marginBottom: 16 }}>
-              <button onClick={() => setPantryOpen((o) => !o)} aria-expanded={pantryOpen} style={{ ...foldStyle, padding: 0, background: "none", borderRadius: 0 }}>
-                <span style={{ fontSize: 16, fontWeight: 800 }}>Check you have · {pantry.length}</span>
-                <span style={{ fontSize: 15, color: "var(--muted)" }}>{pantryOpen ? "Hide" : "Show"}</span>
-              </button>
-              {pantryOpen && (
-                <>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {pantry.map((p) => (
-                      <button key={p.key} onClick={() => tickAll(p.ids)} aria-label={`Have ${p.name}`} style={{ minHeight: 36, padding: "6px 12px", border: "none", borderRadius: 999, background: "var(--chip)", fontSize: 14, fontWeight: 600, lineHeight: 1.2 }}>
-                        {p.name}
-                      </button>
-                    ))}
-                  </div>
-                  <p style={{ marginTop: 6, fontSize: 13, color: "var(--muted)" }}>Tap what you already have. Anything left, add to your list.</p>
-                </>
-              )}
-            </section>
-          )}
+          {pantry.length > 0 && (() => {
+            const missing = pantry.filter((p) => !p.have).length;
+            return (
+              <section style={{ marginBottom: 16 }}>
+                <button onClick={() => setPantryOpen((o) => !o)} aria-expanded={pantryOpen} style={{ ...foldStyle, padding: 0, background: "none", borderRadius: 0 }}>
+                  <span style={{ fontSize: 16, fontWeight: 800 }}>Check the cupboard</span>
+                  <span style={{ fontSize: 15, color: "var(--muted)" }}>{missing ? `${missing} to check` : "All there"} · {pantryOpen ? "Hide" : "Show"}</span>
+                </button>
+                {pantryOpen && (
+                  <>
+                    <div role="group" aria-label="Pantry checks" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {pantry.map((p) => (
+                        <button
+                          key={p.key}
+                          onClick={() => toggleHave(p)}
+                          aria-pressed={p.have}
+                          style={{
+                            minHeight: 36, padding: "6px 12px 6px 10px", display: "inline-flex", alignItems: "center", gap: 6,
+                            border: "2px solid", borderColor: p.have ? "transparent" : "var(--line)", borderRadius: 999,
+                            background: p.have ? "var(--chip)" : "var(--white)", color: p.have ? "var(--muted)" : "var(--ink)",
+                            fontSize: 14, fontWeight: 600, lineHeight: 1.2,
+                          }}
+                        >
+                          <span aria-hidden="true" style={{ width: 16, height: 16, borderRadius: 5, flexShrink: 0, border: p.have ? "none" : "2px solid var(--ink)", background: p.have ? "var(--muted)" : "transparent", color: "var(--white)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {p.have && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5 9-10" /></svg>}
+                          </span>
+                          <span style={{ textDecoration: p.have ? "line-through" : "none" }}>{p.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p style={{ marginTop: 6, fontSize: 13, color: "var(--muted)" }}>Tick what you have. Tap again to undo.</p>
+                  </>
+                )}
+              </section>
+            );
+          })()}
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-            <h2 style={{ fontWeight: 800, fontSize: 22, letterSpacing: -0.8 }}>To buy</h2>
-            <GroupToggle value={groupBy} onChange={setGroupBy} />
+          {/* To buy and Basket side by side: a mistaken tick is one tap away. */}
+          <div role="tablist" aria-label="Shopping list" style={{ display: "flex", gap: 2, background: "var(--chip)", borderRadius: 14, padding: 3 }}>
+            {[["buy", "To buy", toBuyCount], ["basket", "Basket", done.length]].map(([id, label, n]) => {
+              const active = list === id;
+              return (
+                <button key={id} role="tab" aria-selected={active} onClick={() => setList(id)} style={{ flex: 1, height: 44, border: "none", borderRadius: 11, background: active ? "var(--white)" : "transparent", color: active ? "var(--ink)" : "var(--muted)", fontSize: 16, fontWeight: 800 }}>
+                  {label} <span style={{ color: active && id === "buy" ? "var(--tomato)" : "inherit" }}>· {n}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {groups.map((group) => (
-            <section key={group.key} style={{ paddingTop: 14 }}>
-              <h3 style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.3 }}>{group.title}</h3>
-              {group.rows
-                ? group.rows.map((row) => <ItemRow key={row.key} row={row} onTick={tickAll} />)
-                : group.recipes.map((recipe) => (
-                    <div key={recipe.key} style={{ paddingTop: 8 }}>
-                      <h4 style={{ margin: 0, fontWeight: 700, fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--tomato)" }}>{recipe.title}</h4>
-                      {recipe.rows.map((row) => <ItemRow key={row.key} row={row} onTick={tickAll} />)}
-                    </div>
-                  ))}
-            </section>
-          ))}
-
-          <button onClick={() => setBasketOpen((open) => !open)} aria-expanded={basketOpen} style={{ ...foldStyle, marginTop: 14 }}>
-            <span style={{ fontSize: 16, fontWeight: 800 }}>In the basket · {done.length}</span>
-            <span style={{ fontSize: 15, color: "var(--muted)" }}>{basketOpen ? "Hide" : "Show"}</span>
-          </button>
-
-          {basketOpen && done.map((item) => (
-            <button key={item.id} onClick={() => toggle(item.id)} style={{ ...rowStyle, color: "var(--muted)" }}>
-              <span style={{ width: 22, height: 22, borderRadius: 7, background: "var(--tomato)", color: "var(--white)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5 9-10" /></svg>
-              </span>
-              <span style={{ fontSize: 16, lineHeight: 1.25, textDecoration: "line-through" }}>{item.item}</span>
-            </button>
-          ))}
+          {list === "buy" ? (
+            <>
+              <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 10 }}>
+                <GroupToggle value={groupBy} onChange={setGroupBy} />
+              </div>
+              {!groups.length && <p style={{ padding: "16px 0", fontSize: 16, color: "var(--muted)" }}>All in the basket.</p>}
+              {groups.map((group) => (
+                <section key={group.key} style={{ paddingTop: 10 }}>
+                  <h3 style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.3 }}>{group.title}</h3>
+                  {group.rows
+                    ? group.rows.map((row) => <ItemRow key={row.key} row={row} onTick={tickAll} />)
+                    : group.recipes.map((recipe) => (
+                        <div key={recipe.key} style={{ paddingTop: 8 }}>
+                          <h4 style={{ margin: 0, fontWeight: 700, fontSize: 13, textTransform: "uppercase", letterSpacing: 0.6, color: "var(--tomato)" }}>{recipe.title}</h4>
+                          {recipe.rows.map((row) => <ItemRow key={row.key} row={row} onTick={tickAll} />)}
+                        </div>
+                      ))}
+                </section>
+              ))}
+            </>
+          ) : (
+            <div style={{ paddingTop: 6 }}>
+              {!done.length && <p style={{ padding: "16px 0", fontSize: 16, color: "var(--muted)" }}>Nothing in the basket yet.</p>}
+              {done.map((item) => (
+                <button key={item.id} onClick={() => toggle(item.id)} aria-label={`Take ${item.item} out of the basket`} style={{ ...rowStyle, color: "var(--muted)" }}>
+                  <span style={{ width: 22, height: 22, borderRadius: 7, background: "var(--tomato)", color: "var(--white)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5 9-10" /></svg>
+                  </span>
+                  <span style={{ fontSize: 16, lineHeight: 1.25, textDecoration: "line-through" }}>{item.item}</span>
+                </button>
+              ))}
+              {done.length > 0 && <p style={{ marginTop: 8, fontSize: 13, color: "var(--muted)" }}>Tap an item to put it back on the list.</p>}
+            </div>
+          )}
         </main>
       )}
     </>
