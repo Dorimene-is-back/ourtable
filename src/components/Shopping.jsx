@@ -28,8 +28,11 @@ function mergeByName(list) {
   list.forEach((item) => {
     const name = item.item.trim();
     const key = name.toLowerCase();
-    if (!map.has(key)) map.set(key, { key, name, ids: [] });
-    map.get(key).ids.push(item.id);
+    if (!map.has(key)) map.set(key, { key, name, ids: [], uses: [] });
+    const row = map.get(key);
+    row.ids.push(item.id);
+    // What it's for, e.g. "Tue · Pho gà" (shown in the aisle view, where days and recipes are mixed).
+    row.uses.push([item.day?.split(" ")[0], item.recipeTitle].filter(Boolean).join(" · "));
   });
   return [...map.values()];
 }
@@ -173,13 +176,20 @@ const rowStyle = { width: "100%", minHeight: 44, display: "flex", alignItems: "c
 const foldStyle = { width: "100%", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", border: "none", borderRadius: 16, background: "var(--chip)" };
 
 function ItemRow({ row, onTick }) {
+  const uses = row.uses?.filter(Boolean) || [];
   return (
     <button onClick={() => onTick(row.ids)} aria-pressed={row.done} style={{ ...rowStyle, color: row.done ? "var(--muted)" : "var(--ink)" }}>
       <span aria-hidden="true" style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, border: row.done ? "none" : "2px solid var(--ink)", background: row.done ? "var(--muted)" : "transparent", color: "var(--white)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {row.done && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5 9-10" /></svg>}
       </span>
-      <span style={{ fontSize: 16, lineHeight: 1.25, textDecoration: row.done ? "line-through" : "none" }}>{row.name}</span>
-      {row.ids.length > 1 && <span style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, color: "var(--muted)", flexShrink: 0 }}>×{row.ids.length}</span>}
+      <span style={{ flex: 1, minWidth: 0, fontSize: 16, lineHeight: 1.25, textDecoration: row.done ? "line-through" : "none" }}>{row.name}</span>
+      {uses.length > 0 && (
+        <span style={{ maxWidth: "45%", flexShrink: 0, textAlign: "right", fontSize: 12, lineHeight: 1.3, color: "var(--muted)" }}>
+          {uses.map((use, i) => (
+            <span key={i} style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{use}</span>
+          ))}
+        </span>
+      )}
     </button>
   );
 }
