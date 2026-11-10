@@ -9,7 +9,7 @@ export function fetchWeeks() {
   if (!weeksPromise) {
     weeksPromise = supabase
       .from("weeks")
-      .select("id, dates, days(id, day, date, holiday, holiday_name, recipes(id, title, image, type, sort_order, servings(for_who), ingredients(id)))")
+      .select("id, dates, days(id, day, date, holiday, holiday_name, recipes(id, title, image, type, sort_order, servings(for_who), ingredients(id))), shopping(recipe_id, category)")
       .order("id", { ascending: false })
       .then(({ data, error }) => {
         if (error) throw error;
