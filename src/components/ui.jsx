@@ -57,7 +57,8 @@ export function Photo({ src, size, radius = 0, height, placeholder = "var(--line
 const TABS = [
   { to: "/", label: "Week", icon: <><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></> },
   { to: "/shopping", label: "Shopping", icon: <><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z" /><path d="M9 9V6a3 3 0 0 1 6 0v3" /></> },
-  { to: "/weeks", label: "Past weeks", icon: <path d="M4 6h16M4 12h16M4 18h10" /> },
+  { to: "/recipes", label: "Recipes", icon: <><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z" /><path d="M5 17a3 3 0 0 1 3-3h11" /></> },
+  { to: "/weeks", label: "All weeks", icon: <path d="M4 6h16M4 12h16M4 18h10" /> },
 ];
 
 // Slides away while scrolling down and returns on scroll up, to free the screen on long lists.
@@ -86,7 +87,7 @@ export function TabBar({ hideOnScroll = false }) {
       {TABS.map((tab) => {
         const active = pathname === tab.to;
         return (
-          <Link key={tab.to} to={tab.to} aria-current={active ? "page" : undefined} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, minWidth: 70, minHeight: 50, padding: "6px 10px", justifyContent: "center", color: active ? "var(--tomato)" : "var(--muted)", fontSize: 13, fontWeight: active ? 800 : 500 }}>
+          <Link key={tab.to} to={tab.to} aria-current={active ? "page" : undefined} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flex: 1, minWidth: 0, minHeight: 50, padding: "6px 2px", justifyContent: "center", color: active ? "var(--tomato)" : "var(--muted)", fontSize: 13, fontWeight: active ? 800 : 500 }}>
             <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{tab.icon}</svg>
             {tab.label}
           </Link>
