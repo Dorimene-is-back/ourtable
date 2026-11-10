@@ -136,7 +136,7 @@ function DishCard({ dish }) {
     <Link to={`/weeks/${weekId}/${recipe.id}`} style={{ display: "block", marginBottom: 14 }}>
       <div style={{ position: "relative", aspectRatio: `1 / ${shapeOf(dish.key)}`, borderRadius: 16, overflow: "hidden", background: "var(--line)" }}>
         <Photo src={recipe.image} style={{ position: "absolute", inset: 0 }} />
-        <span style={{ ...light, top: 8, left: 8 }}>{cookedLabel(dish.cooked)}</span>
+        {dish.cooked !== 1 && <span style={{ ...light, top: 8, left: 8 }}>{cookedLabel(dish.cooked)}</span>}
         {dish.last
           ? <span style={{ ...dark, bottom: 8, left: 8 }}>Last cooked {lastLabel(dish.last)}</span>
           : dish.planned > 0 && <span style={{ ...dark, bottom: 8, left: 8 }}>Coming up</span>}
