@@ -67,17 +67,15 @@ const toggled = (set, value) => {
 };
 
 // dates: groups from shoppingDates(), in date order.
-// The list covers the first date up to `until` (the last date to shop for). null = every date.
+// Every date starts selected; any day can be taken out or put back.
 export function useShopping(dates) {
   const [ticked, setTicked] = useState(() => new Set(read(TICKS_KEY, [])));
-  const [until, setUntil] = useState(null);
+  const [deselected, setDeselected] = useState(() => new Set());
   const [have, setHave] = useState(() => new Set(read(PANTRY_KEY, [])));
   // "type" was the old name for the aisle view.
   const [groupBy, setGroupByState] = useState(() => (read(GROUP_KEY, "date") === "date" ? "date" : "aisle"));
 
-  const untilIndex = dates.findIndex((d) => d.key === until);
-  const lastIndex = untilIndex === -1 ? dates.length - 1 : untilIndex;
-  const selected = dates.slice(0, lastIndex + 1);
+  const selected = dates.filter((d) => !deselected.has(d.key));
   const items = selected.flatMap((d) => d.items);
   const pending = items.filter((item) => !ticked.has(item.id));
   const toBuy = pending.filter((item) => item.category !== "Pantry");
@@ -139,8 +137,9 @@ export function useShopping(dates) {
 
   return {
     dates,
-    lastIndex,
-    setUntil: (key) => setUntil(key === dates[dates.length - 1]?.key ? null : key),
+    deselected,
+    toggleDate: (key) => setDeselected((prev) => toggled(prev, key)),
+    setAllDates: (on) => setDeselected(on ? new Set() : new Set(dates.map((d) => d.key))),
     total: items.filter((item) => item.category !== "Pantry").length,
     done: items.filter((item) => item.category !== "Pantry" && ticked.has(item.id)),
     pantry,
@@ -185,58 +184,62 @@ function ItemRow({ row, onTick }) {
   );
 }
 
-// "Shop until": tap the last day you're buying for; every day up to it is included.
+// Pick any days: each is a checkbox (red with a tick = on the list). Items to buy per day shown underneath.
 // Pages with a sticky header render it inside that header; otherwise ShoppingBody pins it to the top.
 export function DatePicker({ shopping, sticky = false }) {
-  const { dates, lastIndex, setUntil } = shopping;
-  const first = dates[0];
-  const last = dates[lastIndex];
-  const count = dates.slice(0, lastIndex + 1).reduce((n, d) => n + d.items.length, 0);
-  const isAll = lastIndex === dates.length - 1;
-  const range = first === last ? first.label : `${first.label} → ${last.label}`;
+  const { dates, deselected, toggleDate, setAllDates } = shopping;
+  const toBuy = (d) => d.items.filter((item) => item.category !== "Pantry").length;
+  const picked = dates.filter((d) => !deselected.has(d.key));
+  const count = picked.reduce((n, d) => n + toBuy(d), 0);
+  const summary = !picked.length
+    ? "No days picked"
+    : picked.length === dates.length
+      ? "All days"
+      : picked.map((d) => d.label.split(" ")[0]).join(", ");
 
   return (
-    <div style={{ padding: "12px 20px 14px", borderBottom: "2px solid var(--line)", background: "var(--white)", ...(sticky && { position: "sticky", top: 0, zIndex: 4 }) }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
-        <p style={{ fontSize: 15, lineHeight: 1.3 }}>
-          <span style={{ fontWeight: 800 }}>Shopping for {range}</span>
+    <div style={{ padding: "10px 20px 12px", borderBottom: "2px solid var(--line)", background: "var(--white)", ...(sticky && { position: "sticky", top: 0, zIndex: 4 }) }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <p style={{ fontSize: 15, lineHeight: 1.3, minWidth: 0 }}>
+          <span style={{ fontWeight: 800 }}>{summary}</span>
           <span style={{ color: "var(--muted)" }}> · {count} {count === 1 ? "item" : "items"}</span>
         </p>
-        {!isAll && dates.length > 1 && (
-          <button onClick={() => setUntil(null)} style={{ minHeight: 44, padding: "0 4px", border: "none", background: "none", color: "var(--tomato)", fontSize: 15, fontWeight: 800, flexShrink: 0 }}>
-            All days
-          </button>
+        {dates.length > 1 && (
+          <div style={{ display: "flex", flexShrink: 0 }}>
+            {[["Select all", true, deselected.size > 0], ["Clear", false, picked.length > 0]].map(([label, on, enabled]) => (
+              <button key={label} onClick={() => setAllDates(on)} disabled={!enabled} style={{ minHeight: 44, padding: "0 6px", border: "none", background: "none", fontSize: 14, fontWeight: 800, color: enabled ? "var(--ink)" : "var(--line)", cursor: enabled ? "pointer" : "default" }}>
+                {label}
+              </button>
+            ))}
+          </div>
         )}
       </div>
-      <div role="radiogroup" aria-label="Shop until" style={{ display: "flex", overflowX: "auto", margin: "0 -20px", padding: "0 20px" }}>
-        {dates.map((d, i) => {
-          const inRange = i <= lastIndex;
-          const isEnd = i === lastIndex;
+      <div role="group" aria-label="Days to shop for" style={{ display: "flex", gap: 6, overflowX: "auto", margin: "0 -20px", padding: "2px 20px" }}>
+        {dates.map((d) => {
+          const on = !deselected.has(d.key);
           const [weekday, number] = d.label.split(" ");
           return (
             <button
               key={d.key}
-              role="radio"
-              aria-checked={isEnd}
-              aria-label={`Shop until ${d.label}, ${d.items.length} items`}
-              onClick={() => setUntil(d.key)}
+              onClick={() => toggleDate(d.key)}
+              aria-pressed={on}
+              aria-label={`${d.label}, ${toBuy(d)} items`}
               style={{
-                flex: "1 0 54px", maxWidth: 84, height: 62, border: "none", padding: 0,
-                // Days in range join into one tomato band; the last day is the rounded end.
-                background: inRange ? (isEnd ? "var(--tomato)" : "var(--tomato-tint)") : "transparent",
-                color: isEnd ? "var(--white)" : inRange ? "var(--tomato-dark)" : "var(--muted)",
-                borderRadius: i === 0 && isEnd ? 16 : i === 0 ? "16px 0 0 16px" : isEnd ? "0 16px 16px 0" : 0,
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+                flex: "1 0 56px", maxWidth: 84, height: 72, padding: "6px 0 4px", borderRadius: 14,
+                border: "2px solid", borderColor: on ? "var(--tomato)" : "var(--line)",
+                background: on ? "var(--tomato)" : "var(--white)", color: on ? "var(--white)" : "var(--muted)",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 600 }}>{weekday}</span>
-              <span style={{ fontSize: 19, fontWeight: 800, lineHeight: 1 }}>{number}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>{d.items.length}</span>
+              <span aria-hidden="true" style={{ width: 18, height: 18, borderRadius: 6, border: on ? "none" : "2px solid var(--line)", background: on ? "var(--white)" : "transparent", color: "var(--tomato)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {on && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5 9-10" /></svg>}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1 }}>{weekday} <span style={{ fontSize: 16, fontWeight: 800 }}>{number}</span></span>
+              <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.85, lineHeight: 1 }}>{toBuy(d)} items</span>
             </button>
           );
         })}
       </div>
-      {dates.length > 1 && <p style={{ marginTop: 6, fontSize: 13, color: "var(--muted)" }}>Tap the last day you're shopping for.</p>}
     </div>
   );
 }
@@ -258,7 +261,7 @@ function GroupToggle({ value, onChange }) {
 
 export function ShoppingBody({ shopping, pickerInHeader = false }) {
   const [pantryOpen, setPantryOpen] = useState(true);
-  const { dates, total, pantry, toggleHave, setAllHave, toBuyCount, groups, groupBy, setGroupBy, tickAll } = shopping;
+  const { dates, deselected, total, pantry, toggleHave, setAllHave, toBuyCount, groups, groupBy, setGroupBy, tickAll } = shopping;
 
   if (!dates.length) return <p style={{ padding: "24px 20px", fontSize: 16, color: "var(--muted)" }}>No shopping list for these dates.</p>;
 
@@ -317,7 +320,7 @@ export function ShoppingBody({ shopping, pickerInHeader = false }) {
           })()}
 
           <GroupToggle value={groupBy} onChange={setGroupBy} />
-          {toBuyCount === 0 && <p style={{ paddingTop: 14, fontSize: 16, color: "var(--muted)" }}>All ticked off.</p>}
+          {toBuyCount === 0 && <p style={{ paddingTop: 14, fontSize: 16, color: "var(--muted)" }}>{deselected.size === dates.length ? "Pick a day to see what to buy." : "All ticked off."}</p>}
           {groups.map((group) => (
             <section key={group.key} style={{ paddingTop: 14 }}>
               <h3 style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.3 }}>{group.title}</h3>
