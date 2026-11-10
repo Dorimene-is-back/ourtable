@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppShell, Message, Photo, RedHeader, TabBar } from "../components/ui";
 import { fetchWeeks, useLoad, useToday } from "../lib/data";
-import { dayDate, toISO, whoFor } from "../lib/weeks";
+import { dayDate, toISO } from "../lib/weeks";
 
 // Same dish across weeks has different ids, so dishes are matched by title (notes in brackets ignored).
 const dishKey = (title) => title.replace(/\([^)]*\)/g, "").trim().toLowerCase();
@@ -58,16 +58,18 @@ const badge = { position: "absolute", padding: "3px 8px", borderRadius: 999, fon
 const light = { ...badge, background: "rgba(255,255,255,0.92)", color: "var(--ink)" };
 const dark = { ...badge, background: "rgba(26,15,12,0.72)", color: "var(--white)", fontWeight: 600 };
 
+const cookedLabel = (n) => (n === 0 ? "Not cooked yet" : n === 1 ? "Cooked once" : n === 2 ? "Cooked twice" : `Cooked ${n} times`);
+
 function DishCard({ dish }) {
   const { recipe, weekId } = dish.latest;
   return (
     <Link to={`/weeks/${weekId}/${recipe.id}`} style={{ display: "block", marginBottom: 14 }}>
       <div style={{ position: "relative", aspectRatio: `1 / ${shapeOf(dish.key)}`, borderRadius: 16, overflow: "hidden", background: "var(--line)" }}>
         <Photo src={recipe.image} style={{ position: "absolute", inset: 0 }} />
-        <span style={{ ...light, top: 8, left: 8 }}>{dish.cooked ? `${dish.cooked}×` : "New"}</span>
-        <span style={{ ...light, top: 8, right: 8, fontWeight: 600 }}>{whoFor(recipe)}</span>
-        {dish.last && <span style={{ ...dark, bottom: 8, left: 8 }}>{lastLabel(dish.last)}</span>}
-        {!dish.last && dish.planned > 0 && <span style={{ ...dark, bottom: 8, left: 8 }}>Planned</span>}
+        <span style={{ ...light, top: 8, left: 8 }}>{cookedLabel(dish.cooked)}</span>
+        {dish.last
+          ? <span style={{ ...dark, bottom: 8, left: 8 }}>Last cooked {lastLabel(dish.last)}</span>
+          : dish.planned > 0 && <span style={{ ...dark, bottom: 8, left: 8 }}>Coming up</span>}
       </div>
       <p style={{ marginTop: 6, fontSize: 15, fontWeight: 700, lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{recipe.title}</p>
     </Link>
