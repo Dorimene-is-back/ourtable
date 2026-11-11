@@ -42,6 +42,36 @@ export function BackButton({ fallback, label, style }) {
   );
 }
 
+// Five stars filled to the rating (halves rounded to the nearest whole star).
+export function Stars({ value, size = 16 }) {
+  const full = Math.round(value);
+  return (
+    <span role="img" aria-label={`${value} out of 5`} style={{ display: "inline-flex", gap: 1, verticalAlign: "middle" }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <svg key={i} aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill={i <= full ? "var(--ink)" : "var(--line)"}>
+          <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+// Heart toggle for favourites. Filled red when saved.
+export function HeartButton({ on, onClick, size = 44, style }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={!!on}
+      aria-label={on ? "Remove from favourites" : "Save to favourites"}
+      style={{ width: size, height: size, borderRadius: 999, border: "none", background: "var(--white)", color: "var(--tomato)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 2px 8px rgba(26,15,12,0.18)", ...style }}
+    >
+      <svg aria-hidden="true" width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill={on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round">
+        <path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z" />
+      </svg>
+    </button>
+  );
+}
+
 export function Chevron({ size = 16, stroke = 2.6 }) {
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>;
 }

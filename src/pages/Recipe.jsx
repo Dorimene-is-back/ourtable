@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { AppShell, BackButton, Chevron, Message, Photo } from "../components/ui";
-import { fetchWeek, useLoad } from "../lib/data";
+import { AppShell, BackButton, Chevron, HeartButton, Message, Photo, Stars } from "../components/ui";
+import AuthModal from "../components/AuthModal";
+import { fetchReviews, fetchWeek, setFavorite, useFavorites, useLoad } from "../lib/data";
+import { useAuth } from "../lib/useAuth";
 import { formatRemaining, useTimers } from "../lib/useTimers";
 import { useWakeLock } from "../lib/useWakeLock";
 import { dayDate, servingLabel, shortDate } from "../lib/weeks";
@@ -105,6 +107,7 @@ function RecipeView({ week, day, recipe }) {
       <div style={{ height: 200, position: "relative" }}>
         <Photo src={recipe.image} height={200} placeholder="var(--ink)" />
         <BackButton fallback={`/weeks/${week.id}`} label="Back" style={{ position: "absolute", top: "calc(var(--safe-top) + 12px)", left: 20 }} />
+        {recipe.dish_id && <FavoriteToggle dishId={recipe.dish_id} />}
       </div>
 
       <div style={{ background: "var(--tomato)", color: "var(--white)", padding: "14px 20px 16px" }}>
@@ -132,8 +135,74 @@ function RecipeView({ week, day, recipe }) {
             Original recipe{recipe.ref ? ` · ${recipe.ref.replace(/^Adapted from\s+/i, "")}` : ""}<Chevron size={14} />
           </a>
         )}
+        <Reviews dishId={recipe.dish_id} />
       </article>
     </AppShell>
+  );
+}
+
+// Signed out, the heart opens sign-in first.
+function FavoriteToggle({ dishId }) {
+  const { user } = useAuth();
+  const favorites = useFavorites(user?.id);
+  const [signIn, setSignIn] = useState(false);
+  const on = !!favorites?.has(dishId);
+  return (
+    <>
+      <HeartButton
+        on={on}
+        onClick={() => (user ? setFavorite(user.id, [dishId], !on) : setSignIn(true))}
+        style={{ position: "absolute", top: "calc(var(--safe-top) + 12px)", right: 20 }}
+      />
+      {signIn && <AuthModal onClose={() => setSignIn(false)} />}
+    </>
+  );
+}
+
+const cookedOn = (iso) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+};
+
+// Every rating and comment on this dish, across all the times it was cooked.
+function Reviews({ dishId }) {
+  const { user, loading: authLoading } = useAuth();
+  const { data: reviews, loading, error } = useLoad(() => fetchReviews(dishId), [dishId, user?.id]);
+  const rated = (reviews || []).filter((r) => r.rating != null);
+  const average = rated.length ? Math.round((rated.reduce((n, r) => n + r.rating, 0) / rated.length) * 10) / 10 : null;
+
+  let body;
+  if (authLoading || loading) body = null;
+  else if (error) body = <p style={{ fontSize: 15, color: "var(--muted)" }}>Couldn’t load the ratings.</p>;
+  else if (!reviews.length) body = <p style={{ fontSize: 15, color: "var(--muted)" }}>{user ? "No ratings yet." : "Sign in to see ratings and comments."}</p>;
+  else body = (
+    <>
+      {average != null && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>{average.toFixed(1)}</span>
+          <Stars value={average} size={20} />
+          <span style={{ fontSize: 14, color: "var(--muted)" }}>{rated.length} {rated.length === 1 ? "rating" : "ratings"}</span>
+        </div>
+      )}
+      {reviews.map((r) => (
+        <div key={r.id} style={{ padding: "12px 0", borderTop: "2px solid var(--line)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {r.rating != null && <Stars value={r.rating} size={14} />}
+            <span style={{ fontSize: 13, color: "var(--muted)" }}>
+              {[r.author, r.cooked_on && `Cooked ${cookedOn(r.cooked_on)}`].filter(Boolean).join(" · ")}
+            </span>
+          </div>
+          {r.comment && <p style={{ marginTop: 4, fontSize: 16, lineHeight: 1.45 }}>{r.comment}</p>}
+        </div>
+      ))}
+    </>
+  );
+
+  return (
+    <section style={{ marginTop: 24, paddingTop: 16, borderTop: "2px solid var(--line)" }}>
+      <h2 style={{ marginBottom: 10, fontWeight: 800, fontSize: 22, letterSpacing: -0.8 }}>Ratings & comments</h2>
+      {body}
+    </section>
   );
 }
 

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { AppShell, Message, Photo, RedHeader, TabBar } from "../components/ui";
-import { fetchWeeks, useLoad, useToday } from "../lib/data";
+import { AppShell, HeartButton, Message, Photo, RedHeader, Stars, TabBar } from "../components/ui";
+import AuthModal from "../components/AuthModal";
+import { fetchRatings, fetchWeeks, setFavorite, useFavorites, useLoad, useToday } from "../lib/data";
+import { useAuth } from "../lib/useAuth";
 import { addDays, dayDate, toISO, whoFor } from "../lib/weeks";
 
 const SALAD = /salad|salade|insalata|panzanella|fattoush|tabbouleh/i;
@@ -26,8 +28,9 @@ function buildLibrary(weeks, today) {
       day.recipes.forEach((recipe) => {
         if (!recipe.title || !recipe.ingredients?.length || /leftover/i.test(recipe.title)) return;
         const key = dishKey(recipe.title);
-        if (!dishes.has(key)) dishes.set(key, { key, cooked: 0, planned: 0, last: null, latest: null, proteins: new Set(), shopped: false });
+        if (!dishes.has(key)) dishes.set(key, { key, cooked: 0, planned: 0, last: null, latest: null, proteins: new Set(), shopped: false, dishIds: new Set() });
         const dish = dishes.get(key);
+        if (recipe.dish_id) dish.dishIds.add(recipe.dish_id);
         const c = cats.get(recipe.id);
         if (c) {
           dish.shopped = true;
@@ -53,10 +56,24 @@ function buildLibrary(weeks, today) {
   }));
 }
 
+// Average across every rating of the dish (a dish can span several records).
+function withRatings(library, ratings) {
+  return library.map((dish) => {
+    let sum = 0;
+    let count = 0;
+    dish.dishIds.forEach((id) => {
+      const r = ratings?.get(id);
+      if (r) { sum += r.rating * r.count; count += r.count; }
+    });
+    return { ...dish, rating: count ? Math.round((sum / count) * 10) / 10 : null, ratingCount: count };
+  });
+}
+
 const SORTS = [
   ["recent", "Recently cooked"],
   ["longest", "Least recently cooked"],
   ["cooked", "Most cooked"],
+  ["rating", "Highest rated"],
   ["name", "A–Z"],
 ];
 
@@ -64,6 +81,7 @@ function sortDishes(dishes, sort) {
   const byName = (a, b) => a.latest.recipe.title.localeCompare(b.latest.recipe.title);
   const lastOrEnd = (d, end) => d.last || end;
   if (sort === "name") return [...dishes].sort(byName);
+  if (sort === "rating") return [...dishes].sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1) || b.ratingCount - a.ratingCount || byName(a, b));
   if (sort === "recent") return [...dishes].sort((a, b) => lastOrEnd(b, "").localeCompare(lastOrEnd(a, "")) || byName(a, b));
   if (sort === "longest") return [...dishes].sort((a, b) => lastOrEnd(a, "9999").localeCompare(lastOrEnd(b, "9999")) || byName(a, b));
   return [...dishes].sort((a, b) => b.cooked - a.cooked || lastOrEnd(b, "").localeCompare(lastOrEnd(a, "")) || byName(a, b));
@@ -72,6 +90,7 @@ function sortDishes(dishes, sort) {
 // Filter groups. Options within a group widen the results (or); groups narrow them (and).
 // "Due again" follows the household rotation rule: not cooked in the last 6 weeks.
 const FILTERS = [
+  { id: "saved", title: "Saved", options: [["fav", "Favourites"]], test: (d) => d.favorite },
   { id: "course", title: "Type", options: [["main", "Main meal"], ["salad", "Salad"], ["dessert", "Dessert"]], test: (d, v) => d.course === v },
   { id: "who", title: "Who it's for", options: [["kids", "Kids"], ["adult", "Adult"], ["all", "Everyone"]], test: (d, v) => d.who === v },
   { id: "protein", title: "Protein", options: [["fish", "Fish"], ["meat", "Meat"], ["veggie", "Veggie"]], test: (d, v) => d.protein === v },
@@ -130,24 +149,38 @@ const dark = { ...badge, background: "rgba(26,15,12,0.72)", color: "var(--white)
 
 const cookedLabel = (n) => (n === 0 ? "Not cooked yet" : n === 1 ? "Cooked once" : n === 2 ? "Cooked twice" : `Cooked ${n} times`);
 
-function DishCard({ dish }) {
+function DishCard({ dish, favorite, onFavorite }) {
   const { recipe, weekId } = dish.latest;
+  const to = `/weeks/${weekId}/${recipe.id}`;
   return (
-    <Link to={`/weeks/${weekId}/${recipe.id}`} style={{ display: "block", marginBottom: 14 }}>
+    <div style={{ marginBottom: 14 }}>
       <div style={{ position: "relative", aspectRatio: `1 / ${shapeOf(dish.key)}`, borderRadius: 16, overflow: "hidden", background: "var(--line)" }}>
-        <Photo src={recipe.image} style={{ position: "absolute", inset: 0 }} />
-        {dish.cooked !== 1 && <span style={{ ...light, top: 8, left: 8 }}>{cookedLabel(dish.cooked)}</span>}
-        {dish.last
-          ? <span style={{ ...dark, bottom: 8, left: 8 }}>Last cooked {lastLabel(dish.last)}</span>
-          : dish.planned > 0 && <span style={{ ...dark, bottom: 8, left: 8 }}>Coming up</span>}
+        <Link to={to} aria-label={recipe.title} style={{ position: "absolute", inset: 0 }}>
+          <Photo src={recipe.image} style={{ position: "absolute", inset: 0 }} />
+          {dish.cooked !== 1 && <span style={{ ...light, top: 8, left: 8 }}>{cookedLabel(dish.cooked)}</span>}
+          {dish.last
+            ? <span style={{ ...dark, bottom: 8, left: 8 }}>Last cooked {lastLabel(dish.last)}</span>
+            : dish.planned > 0 && <span style={{ ...dark, bottom: 8, left: 8 }}>Coming up</span>}
+        </Link>
+        {/* Outside the link so tapping it saves rather than opening the recipe. */}
+        {dish.dishIds.size > 0 && <HeartButton on={favorite} onClick={onFavorite} size={36} style={{ position: "absolute", top: 6, right: 6 }} />}
       </div>
-      <p style={{ marginTop: 6, fontSize: 15, fontWeight: 700, lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{recipe.title}</p>
-    </Link>
+      <Link to={to} style={{ display: "block", marginTop: 6 }}>
+        <p style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.25, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{recipe.title}</p>
+        {dish.rating != null && (
+          <p aria-label={`Rated ${dish.rating} out of 5 from ${dish.ratingCount} ${dish.ratingCount === 1 ? "rating" : "ratings"}`} style={{ marginTop: 2, display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "var(--muted)" }}>
+            <Stars value={dish.rating} size={13} />
+            <span style={{ fontWeight: 800, color: "var(--ink)" }}>{dish.rating.toFixed(1)}</span>
+            <span>({dish.ratingCount})</span>
+          </p>
+        )}
+      </Link>
+    </div>
   );
 }
 
 // Two columns, each card going to the shorter one so the grid stays balanced.
-function Masonry({ dishes }) {
+function Masonry({ dishes, onFavorite }) {
   const cols = [[], []];
   const heights = [0, 0];
   dishes.forEach((dish) => {
@@ -158,7 +191,7 @@ function Masonry({ dishes }) {
   return (
     <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
       {cols.map((col, i) => (
-        <div key={i} style={{ flex: 1, minWidth: 0 }}>{col.map((dish) => <DishCard key={dish.key} dish={dish} />)}</div>
+        <div key={i} style={{ flex: 1, minWidth: 0 }}>{col.map((dish) => <DishCard key={dish.key} dish={dish} favorite={dish.favorite} onFavorite={() => onFavorite(dish)} />)}</div>
       ))}
     </div>
   );
@@ -190,7 +223,17 @@ export default function Recipes() {
   const [sortOpen, setSortOpen] = useState(false);
 
   const sixWeeksAgo = useMemo(() => { const [y, m, d] = today.split("-").map(Number); return toISO(addDays(new Date(y, m - 1, d), -42)); }, [today]);
-  const library = useMemo(() => (weeks ? buildLibrary(weeks, today) : []), [weeks, today]);
+  const { user } = useAuth();
+  const { data: ratings } = useLoad(fetchRatings, [user?.id]);
+  const favorites = useFavorites(user?.id);
+  const [signIn, setSignIn] = useState(false);
+  const rated = useMemo(() => (weeks ? withRatings(buildLibrary(weeks, today), ratings) : []), [weeks, today, ratings]);
+  const library = useMemo(
+    () => rated.map((dish) => ({ ...dish, favorite: [...dish.dishIds].some((id) => favorites?.has(id)) })),
+    [rated, favorites]
+  );
+  // Signed out, the heart opens sign-in first.
+  const toggleFavorite = (dish) => (user ? setFavorite(user.id, dish.dishIds, !dish.favorite) : setSignIn(true));
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     const searched = q ? library.filter((d) => d.latest.recipe.title.toLowerCase().includes(q)) : library;
@@ -248,7 +291,7 @@ export default function Recipes() {
       {weeks && !shown.length && <Message>{query ? "No dish matches that." : "No recipes yet."}</Message>}
 
       <main style={{ padding: "14px 16px 0" }}>
-        <Masonry dishes={visible} />
+        <Masonry dishes={visible} onFavorite={toggleFavorite} />
         <div ref={sentinel} style={{ height: 1 }} />
       </main>
       {draft && (
@@ -294,6 +337,7 @@ export default function Recipes() {
         </Sheet>
       )}
 
+      {signIn && <AuthModal onClose={() => setSignIn(false)} />}
       <TabBar />
     </AppShell>
   );
