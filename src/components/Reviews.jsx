@@ -57,7 +57,9 @@ export function Finished({ recipe, cookedOn, onSaved }) {
   const library = useRef(null);
   const [draft, setDraft] = useState(null); // { file } while the review sheet is open
   const reason = "Sign in to add your photo and rating to this recipe.";
-  const open = (input) => requireUser(reason) && input.current?.click();
+  // After signing in, come back to this block rather than the top of the recipe.
+  const here = `${window.location.pathname}${window.location.search}#done`;
+  const open = (input) => requireUser(reason, here) && input.current?.click();
   const picked = (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -65,7 +67,7 @@ export function Finished({ recipe, cookedOn, onSaved }) {
   };
 
   return (
-    <section style={{ marginTop: 28, padding: "18px 18px 12px", borderRadius: 20, background: "var(--chip)" }}>
+    <section id="done" style={{ marginTop: 28, padding: "18px 18px 12px", borderRadius: 20, background: "var(--chip)", scrollMarginTop: 20 }}>
       <h2 style={{ fontWeight: 800, fontSize: 22, letterSpacing: -0.8 }}>All done?</h2>
       <p style={{ marginTop: 4, fontSize: 16, lineHeight: 1.4 }}>Take a picture of your dish and say how it went.</p>
       <button className="btn-red" onClick={() => open(camera)} style={{ ...primaryButton, width: "100%", marginTop: 14 }}>
@@ -74,7 +76,7 @@ export function Finished({ recipe, cookedOn, onSaved }) {
       </button>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 6 }}>
         <button onClick={() => open(library)} style={textButton}>Choose a photo</button>
-        <button onClick={() => requireUser(reason) && setDraft({ file: null })} style={textButton}>Rate without a photo</button>
+        <button onClick={() => requireUser(reason, here) && setDraft({ file: null })} style={textButton}>Rate without a photo</button>
       </div>
       <input ref={camera} type="file" accept="image/*" capture="environment" onChange={picked} tabIndex={-1} aria-hidden="true" style={hidden} />
       <input ref={library} type="file" accept="image/*" onChange={picked} tabIndex={-1} aria-hidden="true" style={hidden} />

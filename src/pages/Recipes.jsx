@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useNavigationType } from "react-router-dom";
+import AuthButton from "../components/AuthButton";
 import { FavoriteButton } from "../components/Reviews";
 import { AppShell, Message, Photo, RedHeader, Sheet, Star, TabBar } from "../components/ui";
 import { useAuth } from "../lib/auth";
@@ -173,10 +174,17 @@ function Masonry({ dishes, onSaved }) {
 
 // Shows dishes a page at a time, adding more as the end of the list comes into view.
 const PAGE = 20;
-function useEndless(list) {
-  const [count, setCount] = useState(PAGE);
+// resetKey: the search, sort and filters. A new one starts again from the first page; fresh data
+// under the same one does not, so the list doesn't jump while you scroll.
+function useEndless(list, resetKey, initialCount) {
+  const [count, setCount] = useState(initialCount || PAGE);
   const sentinel = useRef(null);
-  useEffect(() => setCount(PAGE), [list]);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    setCount(PAGE);
+    window.scrollTo(0, 0);
+  }, [resetKey]);
   useEffect(() => {
     const el = sentinel.current;
     if (!el || count >= list.length) return undefined;
@@ -184,27 +192,33 @@ function useEndless(list) {
     io.observe(el);
     return () => io.disconnect();
   }, [count, list]);
-  return { visible: list.slice(0, count), sentinel };
+  return { visible: list.slice(0, count), sentinel, count };
 }
+
+// What the list looked like when it was last on screen: search, sort, filters, how far it was
+// scrolled, and its data. Coming back from a dish restores it; opening the tab afresh does not.
+let kept = null;
 
 export default function Recipes() {
   const today = useToday();
   const version = useDataVersion();
   const { user, ready, requireUser } = useAuth();
   const navigate = useNavigate();
+  const cameBack = useNavigationType() === "POP";
+  const [restored] = useState(() => (cameBack && kept && kept.userId === (user?.id ?? null) ? kept : null));
   const { data, loading, error } = useLoad(
     () => Promise.all([fetchWeeks(), fetchLibrary(), fetchRatings().catch(() => new Map()), fetchFavorites(user?.id).catch(() => new Set())])
       .then(([weeks, own, ratings, favorites]) => ({ weeks, own, ratings, favorites })),
     [version, user?.id, ready],
-    { keep: true }
+    { keep: true, initial: restored?.data }
   );
   const weeks = data?.weeks;
   // Hearts tapped on this screen, on top of what was loaded.
-  const [savedEdits, setSavedEdits] = useState({});
+  const [savedEdits, setSavedEdits] = useState(restored?.savedEdits || {});
   const onSaved = (dishId, on) => setSavedEdits((prev) => ({ ...prev, [dishId]: on }));
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState("recent");
-  const [picked, setPicked] = useState({});
+  const [query, setQuery] = useState(restored?.query || "");
+  const [sort, setSort] = useState(restored?.sort || "recent");
+  const [picked, setPicked] = useState(restored?.picked || {});
   const [draft, setDraft] = useState(null); // filters being edited in the sheet
   const [sortOpen, setSortOpen] = useState(false);
 
@@ -226,17 +240,33 @@ export default function Recipes() {
   const activeChips = FILTERS.flatMap((f) => [...(picked[f.id] || [])].map((v) => ({ group: f.id, value: v })));
   const removeChip = ({ group, value }) => setPicked((p) => { const next = new Set(p[group]); next.delete(value); return { ...p, [group]: next }; });
   const toggleDraft = (group, value) => setDraft((d) => { const next = new Set(d[group] || []); if (!next.delete(value)) next.add(value); return { ...d, [group]: next }; });
-  const { visible, sentinel } = useEndless(shown);
+  const resetKey = `${query.trim().toLowerCase()}|${sort}|${activeChips.map((c) => c.group + c.value).join(",")}`;
+  const { visible, sentinel, count } = useEndless(shown, resetKey, restored?.count);
+
+  // Put the list back where it was, before the first paint.
+  useLayoutEffect(() => {
+    if (restored?.y) window.scrollTo(0, restored.y);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    kept = { data, query, sort, picked, savedEdits, count, userId: user?.id ?? null, y: window.scrollY };
+  }, [data, query, sort, picked, savedEdits, count, user?.id]);
+  useEffect(() => {
+    const onScroll = () => { if (kept) kept.y = window.scrollY; };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <AppShell withTabBar>
       <RedHeader>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <h1 style={{ fontWeight: 800, fontSize: 32, lineHeight: 1.1, letterSpacing: -1.4 }}>Recipes</h1>
           <span style={{ flex: 1, textAlign: "right", fontSize: 15, fontWeight: 600 }}>{weeks && (shown.length === library.length ? `${library.length} dishes` : `${shown.length} of ${library.length}`)}</span>
-          <button onClick={() => requireUser("Sign in to add your own recipes.") && navigate("/recipes/new")} aria-label="Add a recipe" style={{ alignSelf: "center", width: 44, height: 44, borderRadius: 999, border: "none", background: "var(--white)", color: "var(--tomato)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <button onClick={() => requireUser("Sign in to add your own recipes.", "/recipes/new") && navigate("/recipes/new")} aria-label="Add a recipe" style={{ alignSelf: "center", width: 44, height: 44, borderRadius: 999, border: "none", background: "var(--white)", color: "var(--tomato)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
           </button>
+          <AuthButton />
         </div>
       </RedHeader>
 

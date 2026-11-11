@@ -29,6 +29,8 @@ No test suite configured.
 - `/kitchen` → `Kitchen`: people, invite link, join requests, sign out
 - `/join/:code` → `Join`: where an invite link lands
 
+**Going back.** Use `BackButton` or `goBackOr(navigate, fallback)` from `ui.jsx`, never a bare `navigate(-1)`: on a screen opened from a link or after signing in, that leaves the app. Don't use `<a href="#…">` for in-page jumps (it adds a history entry); scroll with `scrollIntoView`. The account button (`AuthButton`) goes in the header of every screen that has the tab bar. `Recipes` remembers its search, sort, filters and scroll when you come back to it (`kept` in `Recipes.jsx`).
+
 `vercel.json` rewrites every path to `index.html` so these survive a reload.
 
 ### Data model (Supabase)

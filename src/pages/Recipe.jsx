@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { AddToWeekSheet, FavoriteButton, Finished, ReviewList, useDish } from "../components/Reviews";
-import { AppShell, BackButton, Chevron, Message, Photo, Stars, outlineButton, textButton } from "../components/ui";
+import { AppShell, BackButton, Chevron, Message, Photo, RedHeader, Stars, goBackOr, outlineButton, textButton } from "../components/ui";
 import { useAuth } from "../lib/auth";
 import { fetchRecipe, fetchWeek, refreshData, useDataVersion, useLoad } from "../lib/data";
 import { deleteRecipe } from "../lib/social";
@@ -107,6 +107,16 @@ function RecipeView({ week, day, recipe }) {
   const dish = useDish(recipe.dish_id);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const location = useLocation();
+  const parent = week ? `/weeks/${week.id}` : "/recipes";
+
+  // Back from signing in to add a photo: go straight to that block, then drop the marker.
+  useEffect(() => {
+    if (location.hash !== "#done") return;
+    document.getElementById("done")?.scrollIntoView();
+    navigate(location.pathname + location.search, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const date = week ? dayDate(week.start, day) : null;
   const today = startOfToday();
@@ -122,7 +132,8 @@ function RecipeView({ week, day, recipe }) {
     try {
       await deleteRecipe(recipe.id);
       refreshData();
-      navigate(week ? "/" : "/recipes", { replace: true });
+      // Back to the screen it was opened from: the week, the calendar or the recipe list.
+      goBackOr(navigate, parent);
     } catch (err) {
       window.alert(err.message);
       setRemoving(false);
@@ -134,7 +145,7 @@ function RecipeView({ week, day, recipe }) {
       <RunningPill timers={timers} />
       <div style={{ height: 200, position: "relative" }}>
         <Photo src={recipe.image} height={200} placeholder="var(--ink)" />
-        <BackButton fallback={week ? `/weeks/${week.id}` : "/recipes"} label="Back" style={{ position: "absolute", top: "calc(var(--safe-top) + 12px)", left: 20 }} />
+        <BackButton fallback={parent} label="Back" style={{ position: "absolute", top: "calc(var(--safe-top) + 12px)", left: 20 }} />
         {recipe.dish_id && <FavoriteButton dishId={recipe.dish_id} saved={dish.saved} onChange={dish.setSaved} style={{ position: "absolute", top: "calc(var(--safe-top) + 12px)", right: 20 }} />}
       </div>
 
@@ -142,10 +153,10 @@ function RecipeView({ week, day, recipe }) {
         <p style={{ fontSize: 14, fontWeight: 600 }}>{day ? `${day.day} ${shortDate(date).split(" ").slice(1).join(" ")} · ` : ""}{servingLabel(recipe)}</p>
         <h1 style={{ marginTop: 2, fontWeight: 800, fontSize: 30, lineHeight: 1.05, letterSpacing: -1.2 }}>{recipe.title}</h1>
         {ratingCount > 0 && (
-          <a href="#reviews" style={{ marginTop: 8, minHeight: 28, display: "inline-flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600 }}>
+          <button onClick={() => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" })} style={{ marginTop: 8, minHeight: 28, padding: 0, border: "none", background: "none", color: "inherit", display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600 }}>
             <Stars value={dish.rating.rating} size={16} />
             {dish.rating.rating} · {ratingCount} {ratingCount === 1 ? "rating" : "ratings"}
-          </a>
+          </button>
         )}
       </div>
 
@@ -211,8 +222,13 @@ export default function Recipe() {
   const recipe = week ? day?.recipes.find((r) => r.id === recipeId) : data?.recipe;
 
   if (recipe) return <RecipeView key={recipe.id} week={week} day={day} recipe={recipe} />;
+  // Nothing to show: still give a way out, since an installed app has no browser Back.
   return (
     <AppShell>
+      <RedHeader style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <BackButton fallback={!weekId ? "/recipes" : week ? `/weeks/${weekId}` : "/"} label="Back" />
+        <h1 style={{ fontWeight: 800, fontSize: 28, lineHeight: 1, letterSpacing: -1.2 }}>Recipe</h1>
+      </RedHeader>
       {loading && <Message>Loading…</Message>}
       {error && <Message>Couldn’t load this recipe.</Message>}
       {data && !recipe && !loading && <Message>{weekId ? "This recipe isn’t in that week." : "This recipe isn’t available."}</Message>}

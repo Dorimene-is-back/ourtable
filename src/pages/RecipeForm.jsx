@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AppShell, BackButton, Choice, ErrorNote, Message, RedHeader, fieldStyle, labelStyle, outlineButton, primaryButton } from "../components/ui";
+import { AppShell, BackButton, Choice, ErrorNote, Message, RedHeader, fieldStyle, hasAppHistory, labelStyle, outlineButton, primaryButton } from "../components/ui";
 import { useAuth } from "../lib/auth";
 import { fetchRecipe, refreshData } from "../lib/data";
 import { fetchDish, saveRecipe, uploadRecipeImage } from "../lib/social";
@@ -82,7 +82,9 @@ export default function RecipeForm() {
     try {
       const id = await saveRecipe({ ...form, id: recipeId || null, count: Number(form.count) || 1, ingredients: lines(form.ingredients), steps: lines(form.steps) });
       refreshData();
-      navigate(`/recipes/${id}`, { replace: true });
+      // Editing was opened from the recipe: step back onto it, so Back from there leaves the recipe.
+      if (recipeId && hasAppHistory()) navigate(-1);
+      else navigate(`/recipes/${id}`, { replace: true });
     } catch (err) {
       setError(err.message);
       setSaving(false);

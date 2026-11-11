@@ -31,9 +31,9 @@ Logo: `public/brand/bowl-white.png` (the user's bowl, unaltered) + the word `tam
 
 ## 2. Navigation
 
-Floating bottom tab bar on Home, Shopping and All weeks: white, 2px `--line` border, soft shadow, radius 24, 3 tabs — **Week** (`/`), **Shopping** (`/shopping`), **Past weeks** (`/weeks`). Active tab = red icon + red bold label, others `--muted`. Week page and Recipe page have a back button instead (white circle, red chevron, on the red header).
+Floating bottom tab bar on Home, Shopping and Calendar: white, 2px `--line` border, soft shadow, radius 24, 3 tabs — **Week** (`/`), **Shopping** (`/shopping`), **Past weeks** (`/weeks`). Active tab = red icon + red bold label, others `--muted`. Week page and Recipe page have a back button instead (white circle, red chevron, on the red header).
 
-Routes: `/` Home · `/weeks` All weeks · `/weeks/:weekId` Week · `/weeks/:weekId/:recipeId` Recipe · `/shopping` current week's shopping list.
+Routes: `/` Home · `/weeks` Calendar · `/weeks/:weekId` Week · `/weeks/:weekId/:recipeId` Recipe · `/shopping` current week's shopping list.
 
 ## 3. Screens
 
@@ -61,8 +61,8 @@ Routes: `/` Home · `/weeks` All weeks · `/weeks/:weekId` Week · `/weeks/:week
 - Ticked items leave the list and go into a folded **"In the basket · N"** section at the bottom (tap to show/untick).
 - Persist ticks (localStorage per week is fine for now).
 
-**All weeks** (`/weeks`)
-- Red header "All weeks".
+**Calendar** (`/weeks`)
+- Red header "Calendar".
 - Sticky Mon–Sat header row (white, 2px bottom line).
 - Grouped by month. Each week: label line "**W45** 2–8 Nov ›" (ISO week number; red + "· this week" for the current week; no frame), then 6 equal square tiles Mon–Sat. Tile = that day's **main dish photo** with the date number top-left in white; empty day = `--chip` with muted number. Whole week is tappable → Week page.
 - Main dish = first recipe of the day served to kids or all (never the adult-only salad).

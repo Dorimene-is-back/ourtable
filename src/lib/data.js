@@ -134,8 +134,9 @@ export function fetchRecipe(recipeId) {
 }
 
 // keep: hold on to what is on screen while reloading, for lists that refresh in place.
-export function useLoad(load, deps, { keep = false } = {}) {
-  const [state, setState] = useState({ data: null, loading: true, error: null });
+// initial: something to show straight away (a screen returning to what it showed before).
+export function useLoad(load, deps, { keep = false, initial = null } = {}) {
+  const [state, setState] = useState({ data: initial, loading: true, error: null });
   useEffect(() => {
     let alive = true;
     setState((prev) => ({ data: keep ? prev.data : null, loading: true, error: null }));

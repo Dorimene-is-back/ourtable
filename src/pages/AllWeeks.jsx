@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import AuthButton from "../components/AuthButton";
 import { AppShell, Chevron, Message, Photo, RedHeader, TabBar } from "../components/ui";
 import { fetchWeeks, useDataVersion, useLoad } from "../lib/data";
 import { addDays, dayDate, isoWeekNumber, mainDish, mondayOf, monthName, parseISO, startOfToday, toISO, weekRangeLabel } from "../lib/weeks";
@@ -83,9 +84,10 @@ export default function AllWeeks() {
   return (
     <AppShell withTabBar>
       <RedHeader>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-          <h1 style={{ fontWeight: 800, fontSize: 32, lineHeight: 1.1, letterSpacing: -1.4 }}>All weeks</h1>
-          {firstMonth && <span style={{ fontSize: 15, fontWeight: 600 }}>Since {firstMonth}</span>}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <h1 style={{ fontWeight: 800, fontSize: 32, lineHeight: 1.1, letterSpacing: -1.4 }}>Calendar</h1>
+          <span style={{ flex: 1, textAlign: "right", fontSize: 15, fontWeight: 600 }}>{firstMonth && `Since ${firstMonth}`}</span>
+          <AuthButton />
         </div>
       </RedHeader>
 

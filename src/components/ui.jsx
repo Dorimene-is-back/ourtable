@@ -30,11 +30,21 @@ export function SmallBowl() {
   return <img src="/brand/bowl-white.png" alt="" style={{ width: 32, height: "auto", display: "block", flexShrink: 0 }} />;
 }
 
-// Goes back when the app has history, otherwise to the parent screen (for shared or reloaded links).
+// True when the previous history entry is a screen of this app. The router numbers its entries from
+// 0 at the page the session opened on, so 0 means "arrived from outside": a shared or invite link,
+// or the return from signing in.
+export const hasAppHistory = () => (window.history.state?.idx ?? 0) > 0;
+
+// Goes back one screen, or to the parent screen when there is nothing of ours to go back to.
+// Never use navigate(-1) on its own: from a first screen it leaves the app.
+export function goBackOr(navigate, fallback) {
+  if (hasAppHistory()) navigate(-1);
+  else navigate(fallback, { replace: true });
+}
+
 export function BackButton({ fallback, label, style }) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const goBack = () => (location.key !== "default" ? navigate(-1) : navigate(fallback, { replace: true }));
+  const goBack = () => goBackOr(navigate, fallback);
   return (
     <button onClick={goBack} aria-label={label} style={{ width: 44, height: 44, borderRadius: 999, border: "none", background: "var(--white)", color: "var(--tomato)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, ...style }}>
       <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
@@ -55,10 +65,10 @@ export function Photo({ src, size, radius = 0, height, placeholder = "var(--line
 }
 
 const TABS = [
-  { to: "/", label: "Week", icon: <><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></> },
+  { to: "/", label: "Week", icon: <><path d="M4 11l8-7 8 7" /><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" /></> },
   { to: "/shopping", label: "Shopping", icon: <><path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z" /><path d="M9 9V6a3 3 0 0 1 6 0v3" /></> },
   { to: "/recipes", label: "Recipes", icon: <><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z" /><path d="M5 17a3 3 0 0 1 3-3h11" /></> },
-  { to: "/weeks", label: "All weeks", icon: <path d="M4 6h16M4 12h16M4 18h10" /> },
+  { to: "/weeks", label: "Calendar", icon: <><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></> },
 ];
 
 // Slides away while scrolling down and returns on scroll up, to free the screen on long lists.

@@ -1,4 +1,5 @@
 import { DatePicker, ShoppingBody, ShoppingProgress, useShopping } from "../components/Shopping";
+import AuthButton from "../components/AuthButton";
 import { AppShell, Message, RedHeader, TabBar } from "../components/ui";
 import { fetchWeek, fetchWeeks, useDataVersion, useLoad, useToday } from "../lib/data";
 import { mondayOf, pickWeek, shoppingDates, startOfToday, toISO, weekTitle } from "../lib/weeks";
@@ -35,6 +36,8 @@ export default function Shopping() {
             <h1 style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.1, letterSpacing: -0.8 }}>Shopping</h1>
             {data && <ShoppingProgress done={shopping.done.length} total={shopping.total} />}
             {data && <span style={{ fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{shopping.done.length} / {shopping.total}</span>}
+            {!data && <span style={{ flex: 1 }} />}
+            <AuthButton />
         </div>
         {data?.lastPlanned && <p style={{ marginTop: 2, fontSize: 14, fontWeight: 600 }}>Last planned: {data.lastPlanned}</p>}
       </RedHeader>

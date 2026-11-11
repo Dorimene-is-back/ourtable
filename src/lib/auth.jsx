@@ -9,9 +9,9 @@ const RETURN_KEY = "tambouille:returnTo";
 
 // Signing in leaves the app (Google, or a link in an email) and comes back to the home page.
 // Remember where the person was so they land back there.
-function rememberPlace() {
+function rememberPlace(path) {
   try {
-    localStorage.setItem(RETURN_KEY, JSON.stringify({ path: window.location.pathname + window.location.search, at: Date.now() }));
+    localStorage.setItem(RETURN_KEY, JSON.stringify({ path: path || window.location.pathname + window.location.search, at: Date.now() }));
   } catch {
     // Private browsing: they return to the home page.
   }
@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const [account, setAccount] = useState({ userId: null, profile: null, membership: null, request: null });
-  const [signIn, setSignIn] = useState(null); // { reason } while the sign-in sheet is open
+  const [signIn, setSignIn] = useState(null); // { reason, returnTo } while the sign-in sheet is open
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -79,7 +79,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!sessionLoaded || !userId) return;
     const path = takePlace();
-    if (path && path !== location.pathname + location.search) navigate(path, { replace: true });
+    if (path && path !== location.pathname + location.search + location.hash) navigate(path, { replace: true });
     setSignIn(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionLoaded, userId]);
@@ -98,18 +98,20 @@ export function AuthProvider({ children }) {
       request: ready ? account.request : null,
       reload,
       // Opens the sign-in sheet. Returns true when already signed in, so callers can carry on.
-      requireUser(reason) {
+      // returnTo: where to land after signing in, when that is not the current screen
+      // (the form the person was heading to, or a spot further down this page).
+      requireUser(reason, returnTo) {
         if (user) return true;
-        setSignIn({ reason });
+        setSignIn({ reason, returnTo });
         return false;
       },
       openSignIn: (reason) => setSignIn({ reason }),
       async signInWithGoogle() {
-        rememberPlace();
+        rememberPlace(signIn?.returnTo);
         await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
       },
       async signInWithMagicLink(email) {
-        rememberPlace();
+        rememberPlace(signIn?.returnTo);
         const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
         return { error };
       },
@@ -117,7 +119,7 @@ export function AuthProvider({ children }) {
         await supabase.auth.signOut();
       },
     };
-  }, [user, userId, sessionLoaded, account, reload]);
+  }, [user, userId, sessionLoaded, account, reload, signIn]);
 
   return (
     <AuthContext.Provider value={value}>
