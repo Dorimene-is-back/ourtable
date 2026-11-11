@@ -23,7 +23,7 @@ function Field({ id, label, hint, children }) {
 export default function RecipeForm() {
   const { recipeId } = useParams();
   const navigate = useNavigate();
-  const { user, ready, kitchen, openSignIn } = useAuth();
+  const { user, ready, openSignIn } = useAuth();
   const [form, setForm] = useState(EMPTY);
   const [loaded, setLoaded] = useState(!recipeId);
   const [uploading, setUploading] = useState(false);
@@ -162,7 +162,7 @@ export default function RecipeForm() {
 
           <div style={{ marginTop: 18 }}>
             <span style={labelStyle}>Who can see it</span>
-            <Choice label="Who can see it" value={form.is_public} onChange={set("is_public")} options={[[true, "Everyone"], [false, kitchen ? `${kitchen.name} kitchen` : "Only me"]]} />
+            <Choice label="Who can see it" value={form.is_public} onChange={set("is_public")} options={[[true, "Everyone"], [false, "Only me"]]} />
           </div>
 
           <button type="submit" className="btn-red" disabled={saving || uploading} style={{ ...primaryButton, width: "100%", marginTop: 24, opacity: saving ? 0.6 : 1 }}>

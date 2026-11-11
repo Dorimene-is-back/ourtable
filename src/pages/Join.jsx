@@ -4,11 +4,11 @@ import { AppShell, ErrorNote, Logo, Message, RedHeader, outlineButton, primaryBu
 import { useAuth } from "../lib/auth";
 import { joinKitchen, previewInvite } from "../lib/social";
 
-// Where an invite link lands: says which kitchen, then joins once the person is signed in.
+// Where an invite link lands: says which table, then joins once the person is signed in.
 export default function Join() {
   const { code } = useParams();
   const navigate = useNavigate();
-  const { user, ready, kitchen, reload, requireUser } = useAuth();
+  const { user, ready, reload, requireUser } = useAuth();
   const [invite, setInvite] = useState(undefined); // undefined = loading, null = unknown code
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
@@ -19,14 +19,18 @@ export default function Join() {
   }, [code]);
 
   const join = async () => {
-    if (!requireUser(`Sign in to join the ${invite.kitchen_name} kitchen.`)) return;
+    if (!requireUser(`Sign in to join ${invite.kitchen_name}.`)) return;
     setBusy(true);
     setError("");
     try {
       const joined = await joinKitchen(code);
-      await reload();
-      if (joined.status === "active") navigate("/kitchen", { replace: true });
-      else setResult(joined.status);
+      if (joined.status === "active") {
+        await reload(joined.kitchen_id);
+        navigate("/", { replace: true });
+      } else {
+        await reload();
+        setResult(joined.status);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -47,23 +51,22 @@ export default function Join() {
       )}
       {invite && (
         <div style={{ padding: "24px 20px 0" }}>
-          <h1 style={{ fontWeight: 800, fontSize: 32, lineHeight: 1.05, letterSpacing: -1.3 }}>Join the {invite.kitchen_name} kitchen</h1>
+          <h1 style={{ fontWeight: 800, fontSize: 32, lineHeight: 1.05, letterSpacing: -1.3 }}>Join the table "{invite.kitchen_name}"</h1>
           {result === "requested" ? (
-            <p style={{ marginTop: 12, fontSize: 17, lineHeight: 1.45 }}>Your request is in. You'll see the kitchen's weeks as soon as its head approves you.</p>
+            <>
+              <p style={{ margin: "12px 0 20px", fontSize: 17, lineHeight: 1.45 }}>Your request is in. You'll see this table's weeks as soon as its head approves you.</p>
+              <Link to="/" style={outlineButton}>Go to Tambouille</Link>
+            </>
           ) : (
             <>
               <p style={{ margin: "10px 0 20px", fontSize: 17, lineHeight: 1.45, color: "var(--muted)" }}>
                 {invite.status === "valid"
-                  ? "You'll share its weekly plan, shopping list, recipes and reviews."
-                  : "This link has expired, so the head of the kitchen will need to approve your request."}
+                  ? "You'll share its weekly plan, shopping list and calendar. Your own tables stay as they are."
+                  : "This link has expired, so the head of the table will need to approve your request."}
               </p>
-              {ready && kitchen && kitchen.name !== invite.kitchen_name
-                ? <p style={{ fontSize: 16, lineHeight: 1.45 }}>You already belong to the {kitchen.name} kitchen. Leave it from <Link to="/kitchen" style={{ textDecoration: "underline", fontWeight: 600 }}>your kitchen page</Link> before joining another.</p>
-                : (
-                  <button className="btn-red" onClick={join} disabled={busy || !ready} style={{ ...primaryButton, width: "100%" }}>
-                    {busy ? "Joining…" : !user ? "Sign in to join" : invite.status === "valid" ? "Join" : "Ask to join"}
-                  </button>
-                )}
+              <button className="btn-red" onClick={join} disabled={busy || !ready} style={{ ...primaryButton, width: "100%" }}>
+                {busy ? "Joining…" : !user ? "Sign in to join" : invite.status === "valid" ? "Join" : "Ask to join"}
+              </button>
               <ErrorNote>{error}</ErrorNote>
             </>
           )}

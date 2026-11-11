@@ -262,7 +262,7 @@ export default function Recipes() {
       <RedHeader>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <h1 style={{ fontWeight: 800, fontSize: 32, lineHeight: 1.1, letterSpacing: -1.4 }}>Recipes</h1>
-          <span style={{ flex: 1, textAlign: "right", fontSize: 15, fontWeight: 600 }}>{weeks && (shown.length === library.length ? `${library.length} dishes` : `${shown.length} of ${library.length}`)}</span>
+          <span style={{ flex: 1 }} />
           <button onClick={() => requireUser("Sign in to add your own recipes.", "/recipes/new") && navigate("/recipes/new")} aria-label="Add a recipe" style={{ alignSelf: "center", width: 44, height: 44, borderRadius: 999, border: "none", background: "var(--white)", color: "var(--tomato)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
           </button>
@@ -275,7 +275,7 @@ export default function Recipes() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search dishes"
+          placeholder={weeks ? `Search ${library.length} dishes` : "Search dishes"}
           aria-label="Search dishes"
           style={{ width: "100%", height: 44, padding: "0 14px", border: "2px solid var(--line)", borderRadius: 12, background: "var(--white)", color: "var(--ink)", font: "inherit", fontSize: 16 }}
         />
@@ -302,6 +302,7 @@ export default function Recipes() {
         )}
       </div>
 
+      {weeks && shown.length > 0 && shown.length < library.length && <p style={{ padding: "10px 20px 0", fontSize: 14, fontWeight: 600, color: "var(--muted)" }}>{shown.length} of {library.length} dishes</p>}
       {loading && !data && <Message>Loading…</Message>}
       {error && <Message>Couldn’t load your recipes.</Message>}
       {weeks && !shown.length && <Message>{query ? "No dish matches that." : "No recipes yet."}</Message>}

@@ -68,7 +68,7 @@ function WeekRows({ picked, today }) {
 export default function Home() {
   const version = useDataVersion();
   const { data: weeks, loading, error } = useLoad(fetchWeeks, [version], { keep: true });
-  const { kitchen } = useAuth();
+  const { user, ready, table } = useAuth();
   const today = startOfToday();
   const picked = weeks && pickWeek(weeks, today);
 
@@ -78,13 +78,18 @@ export default function Home() {
         <Logo />
         <AuthButton />
       </RedHeader>
+      {ready && user && !table && (
+        <Link to="/table" style={{ display: "block", margin: "16px 20px 0", padding: "14px 16px", borderRadius: 16, background: "var(--chip)", fontSize: 16, lineHeight: 1.4 }}>
+          <strong>Set up your table</strong> to plan your own weeks. Until then you are looking at an open table's plan.
+        </Link>
+      )}
       {loading && !weeks && <Message>Loading…</Message>}
       {error && <Message>Couldn’t load the plan. Check your connection and try again.</Message>}
-      {weeks && !weeks.length && kitchen && (
+      {weeks && !weeks.length && table && (
         <section style={{ padding: "24px 20px 0" }}>
           <h1 style={{ fontWeight: 800, fontSize: 30, lineHeight: 1.05, letterSpacing: -1.2 }}>Plan your first week</h1>
-          <p style={{ margin: "8px 0 16px", fontSize: 17, lineHeight: 1.45, color: "var(--muted)" }}>The {kitchen.name} kitchen has no weeks yet. Open a recipe and tap "Add to a week" to put it on a day.</p>
-          <Link to="/recipes" className="btn-red" style={{ height: 56, borderRadius: 16, background: "var(--tomato)", color: "var(--white)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800 }}>Browse recipes</Link>
+          <p style={{ margin: "8px 0 16px", fontSize: 17, lineHeight: 1.45, color: "var(--muted)" }}>Nothing is planned for {table.name} yet. Plan a week with the assistant, or open a recipe and tap "Add to a week".</p>
+          <Link to="/plan" className="btn-red" style={{ height: 56, borderRadius: 16, background: "var(--tomato)", color: "var(--white)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800 }}>Plan a week</Link>
         </section>
       )}
       {weeks && weeks.length > 0 && (

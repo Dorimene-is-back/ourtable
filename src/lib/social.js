@@ -121,7 +121,7 @@ async function rpc(name, args) {
 
 export const saveRecipe = (recipe) => rpc("save_recipe", { p: recipe });
 export const deleteRecipe = (recipeId) => rpc("delete_recipe", { p_id: recipeId });
-export const addRecipeToDay = (recipeId, isoDate) => rpc("add_recipe_to_day", { p_recipe: recipeId, p_date: isoDate });
+export const addRecipeToDay = (recipeId, isoDate, tableId) => rpc("add_recipe_to_day", { p_recipe: recipeId, p_date: isoDate, p_kitchen: tableId });
 
 export async function fetchDish(dishId) {
   const { data, error } = await supabase.from("dishes").select("id, title, kitchen_id, created_by, is_public").eq("id", dishId).maybeSingle();
@@ -129,7 +129,7 @@ export async function fetchDish(dishId) {
   return data;
 }
 
-// ── Kitchens ───────────────────────────────────────────────────────────
+// ── Tables (kitchens in the database) ──────────────────────────────────
 export const createKitchen = (name) => rpc("create_kitchen", { p_name: name });
 export const createInvite = (kitchenId) => rpc("create_invite", { p_kitchen: kitchenId });
 export const joinKitchen = (code) => rpc("join_kitchen", { p_code: code });
@@ -167,3 +167,62 @@ export async function updateProfile(userId, changes) {
 }
 
 export const inviteLink = (code) => `${window.location.origin}/join/${code}`;
+
+// ── Convives and house rules ───────────────────────────────────────────
+export async function fetchConvives(tableId) {
+  const { data, error } = await supabase.from("convives").select("id, name, kind, birth_year, likes, dislikes, allergies, notes, sort_order").eq("kitchen_id", tableId).order("sort_order").order("created_at");
+  if (error) fail(error);
+  return data || [];
+}
+
+export async function saveConvive(tableId, convive) {
+  const row = {
+    kitchen_id: tableId,
+    name: convive.name.trim(),
+    kind: convive.kind === "child" ? "child" : "adult",
+    birth_year: convive.birth_year ? Number(convive.birth_year) : null,
+    likes: (convive.likes || "").trim(),
+    dislikes: (convive.dislikes || "").trim(),
+    allergies: (convive.allergies || "").trim(),
+    notes: (convive.notes || "").trim(),
+  };
+  const query = convive.id ? supabase.from("convives").update(row).eq("id", convive.id) : supabase.from("convives").insert(row);
+  const { error } = await query;
+  if (error) fail(error);
+}
+
+export async function deleteConvive(id) {
+  const { error } = await supabase.from("convives").delete().eq("id", id);
+  if (error) fail(error);
+}
+
+export async function fetchHouseRules(tableId) {
+  const { data, error } = await supabase.from("house_rules").select("body").eq("kitchen_id", tableId).maybeSingle();
+  if (error) fail(error);
+  return data?.body || "";
+}
+
+export async function saveHouseRules(tableId, body) {
+  const { error } = await supabase.from("house_rules").upsert({ kitchen_id: tableId, body, updated_at: new Date().toISOString() });
+  if (error) fail(error);
+}
+
+// ── Planning assistant ─────────────────────────────────────────────────
+// The latest unfinished planning conversation for a table, if any.
+export async function fetchOpenPlan(tableId) {
+  const { data, error } = await supabase.from("plan_sessions").select("id, status, messages, draft, week_id, updated_at").eq("kitchen_id", tableId).eq("status", "open").order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) fail(error);
+  return data || null;
+}
+
+// action: "start" | "message" | "apply" | "close". Returns the session { id, status, messages, draft, week_id }.
+export async function planStep(body) {
+  const { data, error } = await supabase.functions.invoke("plan", { body });
+  if (error) {
+    // The function answers errors as JSON with a message meant for the person.
+    let message = "";
+    try { message = (await error.context.json()).error; } catch { /* not JSON */ }
+    throw new Error(message || "The planning assistant could not be reached. Try again in a moment.");
+  }
+  return data;
+}

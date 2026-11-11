@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import AuthButton from "../components/AuthButton";
 import { AppShell, Chevron, Message, Photo, RedHeader, TabBar } from "../components/ui";
+import { useAuth } from "../lib/auth";
 import { fetchWeeks, useDataVersion, useLoad } from "../lib/data";
 import { addDays, dayDate, isoWeekNumber, mainDish, mondayOf, monthName, parseISO, startOfToday, toISO, weekRangeLabel } from "../lib/weeks";
 
@@ -75,6 +76,7 @@ function WeekRow({ monday, week, isCurrent }) {
 
 export default function AllWeeks() {
   const version = useDataVersion();
+  const { tables } = useAuth();
   const { data: weeks, loading, error } = useLoad(fetchWeeks, [version], { keep: true });
   const today = startOfToday();
   const months = weeks ? buildMonths(weeks, today) : [];
@@ -86,7 +88,8 @@ export default function AllWeeks() {
       <RedHeader>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <h1 style={{ fontWeight: 800, fontSize: 32, lineHeight: 1.1, letterSpacing: -1.4 }}>Calendar</h1>
-          <span style={{ flex: 1, textAlign: "right", fontSize: 15, fontWeight: 600 }}>{firstMonth && `Since ${firstMonth}`}</span>
+          {/* With several tables the account button names the current one and needs the room. */}
+          <span style={{ flex: "1 0 auto", textAlign: "right", fontSize: 15, fontWeight: 600, whiteSpace: "nowrap" }}>{firstMonth && tables.length < 2 && `Since ${firstMonth}`}</span>
           <AuthButton />
         </div>
       </RedHeader>

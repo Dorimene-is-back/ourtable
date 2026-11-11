@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import { useAuth } from '../lib/auth'
+import { AccountSheet } from './Tables'
 
 const circle = {
   width: 44, height: 44, borderRadius: 999, border: 'none', padding: 0,
@@ -8,11 +9,13 @@ const circle = {
   fontSize: 18, fontWeight: 800,
 }
 
-// Signed out: opens the sign-in sheet. Signed in: goes to the kitchen page (people, invites, sign out).
+// The account button, in the header of every tab. Signed out: opens sign-in. Signed in: opens the
+// sheet to switch table and reach settings. With several tables it also names the current one.
 export default function AuthButton() {
-  const { user, profile, loading, openSignIn } = useAuth()
+  const { user, profile, loading, tables, table, openSignIn } = useAuth()
+  const [open, setOpen] = useState(false)
 
-  if (loading) return <div style={{ width: 44, height: 44 }} />
+  if (loading) return <div style={{ width: 44, height: 44, flexShrink: 0 }} />
 
   if (!user) {
     return (
@@ -24,12 +27,21 @@ export default function AuthButton() {
 
   const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url
   const initial = (profile?.display_name || user.email || '?')[0].toUpperCase()
+  const named = tables.length > 1 && table
 
   return (
-    <Link to="/kitchen" aria-label="My kitchen" style={circle}>
-      {avatarUrl
-        ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : initial}
-    </Link>
+    <>
+      <button onClick={() => setOpen(true)} aria-label={table ? `${table.name}. Tables and account` : 'Tables and account'} style={named
+        ? { ...circle, width: 'auto', maxWidth: 150, minWidth: 84, flexShrink: 1, padding: '0 4px 0 12px', gap: 8, color: 'var(--ink)', fontSize: 15 }
+        : circle}>
+        {named && <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{table.name}</span>}
+        <span style={{ ...circle, width: named ? 36 : 44, height: named ? 36 : 44, background: named ? 'var(--tomato)' : 'var(--white)', color: named ? 'var(--white)' : 'var(--tomato)', fontSize: named ? 15 : 18 }}>
+          {avatarUrl
+            ? <img src={avatarUrl} alt="" referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : initial}
+        </span>
+      </button>
+      {open && <AccountSheet onClose={() => setOpen(false)} />}
+    </>
   )
 }

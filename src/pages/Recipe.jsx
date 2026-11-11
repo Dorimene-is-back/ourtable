@@ -103,7 +103,7 @@ function RecipeView({ week, day, recipe }) {
   const timers = useTimers(recipe.id, recipe.title);
   const wakeLock = useWakeLock();
   const navigate = useNavigate();
-  const { user, kitchenId, requireUser } = useAuth();
+  const { user, tableId, requireUser } = useAuth();
   const dish = useDish(recipe.dish_id);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -122,7 +122,7 @@ function RecipeView({ week, day, recipe }) {
   const today = startOfToday();
   // A review made from a past or current night belongs to that night; otherwise to today.
   const cookedOn = toISO(date && date <= today ? date : today);
-  const inMyWeek = !!week && !!kitchenId && week.kitchen_id === kitchenId;
+  const inMyWeek = !!week && !!tableId && week.kitchen_id === tableId;
   const mine = !week && !!user && recipe.created_by === user.id;
   const ratingCount = dish.rating?.ratings || 0;
 

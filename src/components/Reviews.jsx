@@ -86,7 +86,7 @@ export function Finished({ recipe, cookedOn, onSaved }) {
 }
 
 function ReviewSheet({ recipe, cookedOn, file, onRetake, onClose, onSaved }) {
-  const { user, kitchen, kitchenId } = useAuth();
+  const { user, tables, tableId } = useAuth();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [isPublic, setIsPublic] = useState(false);
@@ -106,7 +106,7 @@ function ReviewSheet({ recipe, cookedOn, file, onRetake, onClose, onSaved }) {
     setSaving(true);
     setError("");
     try {
-      await addReview({ userId: user.id, kitchenId, dishId: recipe.dish_id, recipeId: recipe.id, rating, comment, file, isPublic, cookedOn });
+      await addReview({ userId: user.id, kitchenId: tableId, dishId: recipe.dish_id, recipeId: recipe.id, rating, comment, file, isPublic, cookedOn });
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -138,7 +138,7 @@ function ReviewSheet({ recipe, cookedOn, file, onRetake, onClose, onSaved }) {
       <label htmlFor="review-comment" style={{ ...labelStyle, marginTop: 12 }}>Notes for next time</label>
       <textarea id="review-comment" value={comment} onChange={(e) => setComment(e.target.value)} rows={3} maxLength={2000} placeholder="What worked, what to change" style={{ ...fieldStyle, resize: "vertical" }} />
       <span style={{ ...labelStyle, marginTop: 14 }}>Who can see this</span>
-      <Choice label="Who can see this" value={isPublic} onChange={setIsPublic} options={[[false, kitchen ? `${kitchen.name} kitchen` : "Only me"], [true, "Everyone"]]} />
+      <Choice label="Who can see this" value={isPublic} onChange={setIsPublic} options={[[false, tables.length ? "My tables" : "Only me"], [true, "Everyone"]]} />
     </Sheet>
   );
 }
@@ -149,7 +149,7 @@ const longDate = (iso) => {
 };
 
 export function ReviewList({ reviews, onChanged }) {
-  const { user, kitchen } = useAuth();
+  const { user, tables } = useAuth();
   const [busy, setBusy] = useState(null);
   const remove = async (review) => {
     if (!window.confirm("Delete this review?")) return;
@@ -166,7 +166,7 @@ export function ReviewList({ reviews, onChanged }) {
     <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
       {reviews.map((review) => {
         const mine = user && review.user_id === user.id;
-        const name = review.author?.display_name || (review.kitchen_id && kitchen?.id === review.kitchen_id ? `${kitchen.name} kitchen` : "A cook");
+        const name = review.author?.display_name || tables.find((t) => t.id === review.kitchen_id)?.name || "A cook";
         return (
           <li key={review.id} style={{ padding: "14px 0", borderBottom: "2px solid var(--line)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -175,7 +175,7 @@ export function ReviewList({ reviews, onChanged }) {
                 <p style={{ fontSize: 15, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</p>
                 <p style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {review.cooked_on ? `Cooked ${longDate(review.cooked_on)}` : longDate(review.created_at)}
-                  {!review.is_public && " · Kitchen only"}
+                  {!review.is_public && " · Private"}
                 </p>
               </div>
               {review.rating && <Stars value={review.rating} size={16} />}
@@ -190,9 +190,9 @@ export function ReviewList({ reviews, onChanged }) {
   );
 }
 
-// Pick a day in the next three weeks to cook this recipe. It is copied onto the kitchen's calendar.
+// Pick a day in the next three weeks to cook this recipe. It is copied onto the current table's calendar.
 export function AddToWeekSheet({ recipe, onClose }) {
-  const { kitchen } = useAuth();
+  const { table } = useAuth();
   const [busy, setBusy] = useState(null);
   const [done, setDone] = useState(null);
   const [error, setError] = useState("");
@@ -207,7 +207,7 @@ export function AddToWeekSheet({ recipe, onClose }) {
     setBusy(toISO(date));
     setError("");
     try {
-      const result = await addRecipeToDay(recipe.id, toISO(date));
+      const result = await addRecipeToDay(recipe.id, toISO(date), table.id);
       refreshData();
       setDone({ date, weekId: result.week_id });
     } catch (err) {
@@ -217,11 +217,11 @@ export function AddToWeekSheet({ recipe, onClose }) {
     }
   };
 
-  if (!kitchen) {
+  if (!table) {
     return (
       <Sheet title="Add to a week" onClose={onClose}>
-        <p style={{ fontSize: 16, lineHeight: 1.45 }}>Weeks belong to a kitchen. Start yours, or join one with an invite code, then plan your weeks here.</p>
-        <Link to="/kitchen" className="btn-red" style={{ ...primaryButton, marginTop: 16, marginBottom: 8 }}>Set up my kitchen</Link>
+        <p style={{ fontSize: 16, lineHeight: 1.45 }}>Weeks belong to a table: the people you plan and eat with. Start yours, or join one with an invite code.</p>
+        <Link to="/table" className="btn-red" style={{ ...primaryButton, marginTop: 16, marginBottom: 8 }}>Set up my table</Link>
       </Sheet>
     );
   }
@@ -240,7 +240,7 @@ export function AddToWeekSheet({ recipe, onClose }) {
 
   return (
     <Sheet title="Add to a week" onClose={onClose}>
-      <p style={{ fontSize: 15, color: "var(--muted)" }}>{kitchen.name} kitchen · pick the day you'll cook it</p>
+      <p style={{ fontSize: 15, color: "var(--muted)" }}>{table.name} · pick the day you'll cook it</p>
       {weeks.map((week) => (
         <section key={week.label} style={{ paddingTop: 14 }}>
           <h3 style={{ marginBottom: 8, fontWeight: 800, fontSize: 16 }}>{week.label}</h3>
